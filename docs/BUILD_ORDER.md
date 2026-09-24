@@ -35,10 +35,13 @@ is green (`npm run lint && npm run typecheck && npm run build`).
       hook) via Claude, persisted as `stories` + `story_scenes`, one queued
       `render_jobs` row per scene, and `publish_story()` to turn a story into a
       series whose episodes are its scenes.
-      **Not done:** the video itself. No text-to-video provider is chosen, so
-      nothing drains the render queue — implement `VideoProvider` in
-      `src/server/story/video.ts` and a worker that fills `output_path`.
-      A story with unrendered scenes publishes as a **draft** series, so viewers
-      never meet an episode with no video behind it.
+      **Done:** a free local renderer. The Studio records each episode to a real
+      WebM in the browser (canvas + MediaRecorder, 720×1560) and stores it —
+      uploaded to the `videos` bucket in live mode, IndexedDB in demo mode. No
+      key, no GPU, no per-second charge.
+      **Not done:** AI-generated footage. There is no free text-to-video API —
+      they all meter GPU time. Implement `VideoProvider` when one is chosen.
+      A story with unrendered scenes publishes as a labelled free preview, so
+      viewers never meet an episode with no video behind it.
       **Also not done:** ElevenLabs narration, and a review/edit pass on scenes
       before publishing.

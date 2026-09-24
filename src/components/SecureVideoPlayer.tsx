@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import StoryboardReel from '@/components/StoryboardReel';
 import { copy } from '@/lib/copy';
+import { getRenderedVideo } from '@/lib/demo/rendered-videos';
 import { posterGradient, posterUrl } from '@/lib/poster';
 import type { ApiResponse, Episode, PlaybackTicket } from '@/lib/types';
 
@@ -114,6 +115,7 @@ export default function SecureVideoPlayer({ episode, active, unlocked, muted, on
     let player: Destroyable | null = null;
     let fallback: string | null = null;
     let usedFallback = false;
+    let objectUrl: string | null = null;
 
     const fail = () => {
       if (cancelled) return;
@@ -144,9 +146,21 @@ export default function SecureVideoPlayer({ episode, active, unlocked, muted, on
         }
 
         fallback = body.data.fallbackSrc;
-        setTicketState({ key: streamKey, ticket: body.data, failed: false });
 
-        player = await attach(video, body.data.src, fail);
+        // A reel rendered locally in the Studio beats the placeholder: it is
+        // this episode's own video, so play it and drop the storyboard overlay.
+        const rendered = body.data.storyboard ? await getRenderedVideo(episode.id) : null;
+        if (cancelled) return;
+
+        const ticket = rendered ? { ...body.data, storyboard: null } : body.data;
+        setTicketState({ key: streamKey, ticket, failed: false });
+
+        if (rendered) {
+          objectUrl = URL.createObjectURL(rendered);
+          video.src = objectUrl;
+        } else {
+          player = await attach(video, body.data.src, fail);
+        }
         if (cancelled) {
           player?.destroy();
           return;
@@ -167,6 +181,7 @@ export default function SecureVideoPlayer({ episode, active, unlocked, muted, on
       video.pause();
       video.removeAttribute('src');
       video.load();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [streamKey, episode.id]);
 

@@ -234,6 +234,12 @@ export const copy = {
     liveEpisodes: (n: number) => `${n} episodes · free preview`,
     openInApp: 'Open',
     takeDown: 'Take down',
+    renderVideos: 'Render the videos',
+    rendering: (n: number, total: number) => `Rendering ${n} of ${total}…`,
+    rendered: (n: number) => `${n} episodes rendered. They play in the app now.`,
+    renderHint:
+      'Renders each episode to a real video file in this browser — canvas to WebM, no provider, no key, no per-second bill. It is motion graphics built from the script, not generated footage.',
+    renderUnsupported: 'This browser cannot record video. Try Chrome or Edge.',
     takingDown: 'Removing…',
     demoOneStory:
       'Demo mode keeps one posted story at a time (cookie-sized). Posting another replaces this one.',

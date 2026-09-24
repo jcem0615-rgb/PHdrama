@@ -67,7 +67,10 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
   (migration 0003). Preview episodes play a *storyboard reel* — the episode's
   beats animated over the placeholder clip by `StoryboardReel`, on its own clock
   so they stay readable. Demo mode lists what is live with Open / Take down.
-  **No video provider is chosen**, so nothing drains the render queue
+  **Render the videos** produces real WebM files locally (canvas + MediaRecorder,
+  `src/lib/reel-film.ts` + `record-reel.ts`) — free, no key, no GPU. Live mode
+  uploads them and closes the render job; demo mode keeps them in IndexedDB.
+  **No AI video provider is chosen** — every one of them is metered
 - ✅ Generated poster art at `/api/posters/[episodeId]` (SVG title card from the
   episode's own words; `?plain=1` for surfaces that draw their own heading)
 - ⬜ Phases 8–9: rewarded ads, DRM / Android wrapper
@@ -89,7 +92,10 @@ they are the fallback that keeps previews clickable.
 - **VIP stacking:** approving VIP while active extends from current expiry (implemented). Confirm this is the intended business rule.
 - **Refunds / chargebacks:** manual only via `admin_adjust_coins` / `admin_set_vip` for now.
 - **Content rights for AI-generated dramas:** check terms of each video/voice provider before monetizing.
-- **Video provider:** not chosen. `src/server/story/video.ts` defines the
-  `VideoProvider` seam and `activeVideoProvider()` returns null. Providers differ
-  on price, clip length, aspect ratio and commercial-use terms, and most are
-  submit-then-poll rather than synchronous — pick one before writing the worker.
+- **AI video provider:** not chosen, and there is no free one. Every
+  text-to-video API meters generation because every one is renting a GPU; Veo
+  needs a key and bills per second, and open-weight models are free to download
+  but not to run. The zero-cost default is the local canvas renderer
+  (`local-canvas`). `activeVideoProvider()` returns null until an AI provider is
+  picked; they differ on price, clip length, aspect ratio and commercial-use
+  terms, and most are submit-then-poll rather than synchronous.

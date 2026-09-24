@@ -14,10 +14,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import ReelRenderer from '@/components/ReelRenderer';
 import Field from '@/components/form/Field';
 import { copy } from '@/lib/copy';
 import { formatDuration } from '@/lib/format';
-import type { ApiResponse, Story } from '@/lib/types';
+import type { ApiResponse, Episode, Story } from '@/lib/types';
 
 interface Breakdown {
   title: string;
@@ -43,7 +44,7 @@ interface Result {
 export interface PostedSummary {
   slug: string;
   title: string;
-  episodes: number;
+  episodes: Episode[];
 }
 
 export default function StoryStudio({
@@ -187,12 +188,13 @@ function PostedList({ posted }: { posted: PostedSummary[] }) {
           {posted.map((story) => (
             <li
               key={story.slug}
-              className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4"
+              className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4"
             >
+              <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{story.title}</p>
                 <p className="mt-0.5 text-[11px] text-slate-400">
-                  {copy.admin.liveEpisodes(story.episodes)}
+                  {copy.admin.liveEpisodes(story.episodes.length)}
                 </p>
               </div>
               <div className="flex shrink-0 gap-2">
@@ -216,6 +218,9 @@ function PostedList({ posted }: { posted: PostedSummary[] }) {
                   )}
                 </button>
               </div>
+              </div>
+
+              <ReelRenderer episodes={story.episodes} />
             </li>
           ))}
         </ul>
@@ -405,6 +410,8 @@ function StoryRow({ story }: { story: Story }) {
       </div>
 
       {message && <p className="mt-2 text-[11px] text-slate-400">{message}</p>}
+
+      <ReelRenderer storyId={story.id} />
     </li>
   );
 }

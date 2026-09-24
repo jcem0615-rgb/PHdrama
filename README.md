@@ -145,12 +145,26 @@ SVG title card drawn from the episode's own title and hook, so the catalogue has
 artwork with no image provider and no per-image cost. Add `?plain=1` for the
 text-free variant used behind headings.
 
-**The video itself is not built.** No text-to-video provider is chosen, so the
-render queue has nothing draining it — implement `VideoProvider` in
-`src/server/story/video.ts` and a worker that uploads to the private `videos`
-bucket and fills `output_path`. Until then a story with unrendered scenes
-publishes as a **draft** series, so viewers never meet an episode with no video
-behind it.
+### Rendering the video
+
+**Render the videos** turns each episode into a real video file — canvas to
+WebM in the admin's browser via `MediaRecorder`, 720×1560 (9:19.5, so it is not
+cropped on a phone). No API key, no GPU, no per-second charge, no rate limit.
+
+It is motion graphics composed from the script — title card, the beat, the
+cliffhanger — not generated footage. That is the honest trade for free.
+
+In live mode each render uploads to the private `videos` bucket and closes its
+`render_jobs` row, so once every scene is rendered `publish_story` publishes the
+series for real instead of as a preview. In demo mode the files go to this
+browser's IndexedDB and the player picks them up.
+
+**There is no free AI video generation API.** Every service that generates real
+footage meters it, because every one of them is renting a GPU — Google's Veo
+(the Gemini/YouTube one) is priced per second and needs a key, and the
+open-weight models are free to download but not free to run. When you pick one,
+implement `VideoProvider` in `src/server/story/video.ts` and a worker that
+drains `render_jobs`; the local renderer stays as the zero-cost default.
 
 What plays is a **storyboard reel**: the episode's own beats — title, what
 happens, the cliffhanger — animated over the placeholder clip on their own

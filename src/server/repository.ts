@@ -455,14 +455,14 @@ export async function listUnlockedEpisodes(): Promise<Episode[]> {
 
 /** Demo mode: the stories currently live in this browser's reels feed. */
 export async function listPostedDemoStories(): Promise<
-  { slug: string; title: string; episodes: number }[]
+  { slug: string; title: string; episodes: Episode[] }[]
 > {
   if (!isDemoMode()) return [];
   const posted = await readPostedStories();
   return posted.map((story) => ({
     slug: story.slug,
     title: story.title,
-    episodes: story.scenes.length,
+    episodes: postedStoryToEpisodes(story),
   }));
 }
 
