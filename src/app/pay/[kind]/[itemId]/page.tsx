@@ -1,11 +1,11 @@
 import { ArrowLeft } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 
 import PaymentForm from '@/components/PaymentForm';
 import { copy } from '@/lib/copy';
-import { listCoinPackages, listPaymentMethods, listVipPlans } from '@/server/repository';
+import { getViewer, listCoinPackages, listPaymentMethods, listVipPlans } from '@/server/repository';
 
 export const metadata: Metadata = { title: copy.pay.title };
 export const dynamic = 'force-dynamic';
@@ -13,6 +13,11 @@ export const dynamic = 'force-dynamic';
 export default async function PayPage({ params }: PageProps<'/pay/[kind]/[itemId]'>) {
   const { kind, itemId } = await params;
   if (kind !== 'coins' && kind !== 'vip') notFound();
+
+  // Nothing to credit without an account, so ask before taking a receipt.
+  if (!(await getViewer())) {
+    redirect(`/auth/sign-in?next=${encodeURIComponent(`/pay/${kind}/${itemId}`)}`);
+  }
 
   const [packages, plans, methods] = await Promise.all([
     listCoinPackages(),

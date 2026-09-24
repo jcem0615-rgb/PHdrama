@@ -36,10 +36,10 @@ The customer app and the staff portal are separate surfaces in one deployment.
 
 | | Customer app | Staff portal |
 | --- | --- | --- |
-| Routes | `/`, `/reels`, `/series`, `/watch`, `/coins`, `/pay`, `/me` | `/admin`, `/admin/login` |
+| Routes | `/`, `/reels`, `/series`, `/watch`, `/coins`, `/pay`, `/me`, `/auth/*` | `/admin`, `/admin/login` |
 | Chrome | `AppChrome` — top bar with coin balance, bottom nav | `StaffShell` — slate palette, no customer nav |
 | Identity | `getViewer()` → `Viewer` (balance, VIP, unlocks) | `getStaff()` → `Staff` (id, name, role) |
-| Sign-in | none yet in live mode (see gaps) | `/admin/login` |
+| Sign-in | `/auth/sign-in`, `/auth/sign-up` | `/admin/login` |
 | Indexed | yes | no — `robots.ts` disallows `/admin`, layout sets `noindex` |
 
 Two rules keep them apart:
@@ -65,6 +65,34 @@ Two rules keep them apart:
 Both cookies live in the same browser on purpose, so one person can submit a
 payment as a customer and then approve it as staff and watch the balance move.
 In demo mode the queue only ever shows payments made in that same browser.
+
+## Sessions
+
+| | Customer | Staff |
+| --- | --- | --- |
+| Sign in | `POST /api/auth/session` | `POST /api/admin/session` |
+| Sign up | `POST /api/auth/register` | — (staff are promoted in SQL) |
+| Sign out | `DELETE /api/auth/session` | `DELETE /api/admin/session` |
+| Live mode | Supabase email + password | Supabase email + password, then a role check |
+| Demo mode | any email, password ≥ 6, stored in `phd_demo` | passcode, stored in `phd_staff` |
+
+**Remember me** is one small cookie, `phd_persist`, not a property of the session
+cookie itself. Supabase rewrites its session cookies on every token refresh, so
+the decision has to be re-applied each time rather than set once at sign-in:
+`createServerSupabase()` reads `phd_persist` and, when it is absent, strips
+`maxAge`/`expires` from every cookie it writes, leaving a cookie that dies with
+the browser. `writeDemoState` does the same for demo mode. It defaults on in the
+customer app and off in the staff portal, where a shared back-office machine
+should not stay signed in.
+
+**Welcome coins** are never granted by the register handler. `handle_new_user`
+in `0001_init.sql` does it, in the same transaction that creates the profile,
+and writes the matching `coin_ledger` row. Demo mode mirrors that in
+`freshDemoState`.
+
+**Demo accounts** are one per browser. The cookie remembers which email the
+balances belong to even while signed out, so signing back in with the same
+address restores the coins and unlocks and a different address starts clean.
 
 ## Supabase clients
 

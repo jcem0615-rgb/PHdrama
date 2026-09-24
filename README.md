@@ -39,6 +39,24 @@ update public.profiles
 
 `admin` reviews the payment queue; `superadmin` can also adjust coins and VIP.
 
+## Accounts
+
+| | Customer | Staff |
+| --- | --- | --- |
+| Sign in | `/auth/sign-in` | `/admin/login` |
+| Sign up | `/auth/sign-up` | promoted in SQL, see above |
+| Sign out | button at the bottom of `/me` | button in the portal header |
+
+Both forms have a show-password toggle and a **remember me** checkbox. Remember
+me is a real session-lifetime switch, not a stored password: unchecked, the
+session cookie carries no expiry and dies with the browser. It defaults on for
+customers and off for staff.
+
+Signing in is not required to browse. Episodes 1–5 of every series play for
+anyone; unlocking, buying and the payment history need an account, and the
+paywall and `/pay` route send signed-out visitors to sign-in with a `?next=`
+back to where they were.
+
 ## Demo mode
 
 **With no environment variables set the app boots in demo mode** and the whole
@@ -48,7 +66,13 @@ VIP expiry, unlocks, payment history) lives in one signed, httpOnly cookie, and
 only server code ever changes it — the same shape as the live path, minus the
 database.
 
-The demo customer is an ordinary `user`. To try the staff portal, go to
+The demo customer starts signed out. Sign up at `/auth/sign-up` with any email
+and a password of at least six characters — nothing is sent and the account
+lives only in that browser's cookie, with the same 50 welcome coins the real
+`handle_new_user` trigger grants. Signing out and back in with the same address
+restores your coins and unlocks; a different address starts fresh.
+
+To try the staff portal, go to
 `/admin` and sign in with the passcode **`phdrama`** (override it with
 `DEMO_ADMIN_PASSCODE`). That sets a second, separate cookie — signing in as
 staff does not change who the customer app thinks you are.

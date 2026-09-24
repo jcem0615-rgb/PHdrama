@@ -8,6 +8,7 @@ import {
   demoAddPayment,
   demoAmountFor,
   demoHasReference,
+  demoViewer,
   readDemoState,
   writeDemoState,
 } from '@/server/demo-store';
@@ -61,6 +62,7 @@ export async function POST(req: NextRequest) {
     if (amount === null) return fail('NOT_FOUND');
 
     const state = await readDemoState();
+    if (!demoViewer(state)) return fail('UNAUTHENTICATED');
     if (demoHasReference(state, methodId, reference)) return fail('DUPLICATE_REFERENCE');
 
     demoAddPayment(state, {

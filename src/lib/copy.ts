@@ -14,6 +14,41 @@ export const copy = {
     me: 'Me',
   },
 
+  auth: {
+    signInTitle: 'Welcome back',
+    signInSubtitle: 'Sign in to keep watching where you left off.',
+    signUpTitle: 'Create your account',
+    signUpSubtitle: 'Free to join. Episodes 1–5 of every series are on us.',
+    name: 'Display name',
+    namePlaceholder: 'How should we call you?',
+    email: 'Email',
+    emailPlaceholder: 'you@email.com',
+    password: 'Password',
+    passwordHint: 'At least 6 characters.',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
+    rememberMe: 'Remember me',
+    rememberHint: 'Stay signed in on this device for 30 days.',
+    signIn: 'Sign in',
+    signingIn: 'Signing in…',
+    signUp: 'Create account',
+    signingUp: 'Creating your account…',
+    noAccount: 'Walang account pa?',
+    haveAccount: 'Already have an account?',
+    switchToSignUp: 'Create one',
+    switchToSignIn: 'Sign in',
+    signOut: 'Sign out',
+    signingOut: 'Signing out…',
+    guestNote: 'You can browse and watch the free episodes without an account.',
+    browseAsGuest: 'Keep browsing',
+    checkEmail: 'Almost there — confirm your email address to finish signing up.',
+    badCredentials: 'That email and password did not match.',
+    emailTaken: 'There is already an account with that email.',
+    weakPassword: 'Use at least 6 characters.',
+    invalidEmail: 'Enter a valid email address.',
+    demoNote: 'Demo mode. Any email works and nothing is sent — the account lives in this browser only.',
+  },
+
   home: {
     featured: 'Featured now',
     trending: 'Trending sa Pinas',
@@ -57,6 +92,7 @@ export const copy = {
     unlocking: 'Unlocking…',
     unlocked: 'Unlocked. Enjoy!',
     signInFirst: 'Sign in to unlock episodes.',
+    signInCta: 'Sign in to continue',
   },
 
   coins: {
@@ -106,7 +142,9 @@ export const copy = {
     ledger: 'Coin activity',
     noPayments: 'No payments yet.',
     noUnlocks: 'Nothing unlocked yet. Episodes 1–5 of every series are free.',
-    signOut: 'Sign out',
+    signedOutTitle: 'You are not signed in',
+    signedOutBody:
+      'Sign in to see your coins, your unlocked episodes and your payment history.',
   },
 
   admin: {

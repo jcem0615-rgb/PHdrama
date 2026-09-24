@@ -1,4 +1,4 @@
-import { Coins, Crown } from 'lucide-react';
+import { Coins, Crown, LogIn } from 'lucide-react';
 import Link from 'next/link';
 
 import { copy } from '@/lib/copy';
@@ -26,13 +26,23 @@ export default function TopBar({ viewer, demo }: { viewer: Viewer | null; demo: 
               VIP
             </span>
           )}
-          <Link
-            href="/coins"
-            className="inline-flex items-center gap-1.5 rounded-full bg-coin-500/15 px-3 py-1.5 text-xs font-bold text-coin-500"
-          >
-            <Coins className="h-4 w-4" />
-            {formatCoins(viewer?.coinBalance ?? 0)}
-          </Link>
+          {viewer ? (
+            <Link
+              href="/coins"
+              className="inline-flex items-center gap-1.5 rounded-full bg-coin-500/15 px-3 py-1.5 text-xs font-bold text-coin-500"
+            >
+              <Coins className="h-4 w-4" />
+              {formatCoins(viewer.coinBalance)}
+            </Link>
+          ) : (
+            <Link
+              href="/auth/sign-in"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold"
+            >
+              <LogIn className="h-3.5 w-3.5" />
+              {copy.auth.signIn}
+            </Link>
+          )}
         </div>
       </div>
     </header>

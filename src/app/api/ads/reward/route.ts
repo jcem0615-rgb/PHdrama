@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { fail, ok } from '@/lib/api';
 import { REWARDED_ADS_ENABLED } from '@/lib/supabase/env';
 import { getEpisode, isDemoMode } from '@/server/repository';
-import { demoAddUnlock, readDemoState, writeDemoState } from '@/server/demo-store';
+import { demoAddUnlock, demoViewer, readDemoState, writeDemoState } from '@/server/demo-store';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,6 +35,8 @@ export async function POST(req: NextRequest) {
   }
 
   const state = await readDemoState();
+  if (!demoViewer(state)) return fail('UNAUTHENTICATED');
+
   demoAddUnlock(state, episode.id);
   await writeDemoState(state);
 

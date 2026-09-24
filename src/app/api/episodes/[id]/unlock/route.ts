@@ -31,6 +31,7 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
   if (isDemoMode()) {
     const state = await readDemoState();
     const viewer = demoViewer(state);
+    if (!viewer) return fail('UNAUTHENTICATED');
 
     if (canWatch(episode, viewer)) {
       return ok({ charged: 0, balance: state.coins });

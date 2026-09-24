@@ -4,6 +4,8 @@ import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import Checkbox from '@/components/form/Checkbox';
+import Field from '@/components/form/Field';
 import { copy } from '@/lib/copy';
 import type { ApiResponse } from '@/lib/types';
 
@@ -17,6 +19,7 @@ export default function StaffLoginForm({ demo }: { demo: boolean }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passcode, setPasscode] = useState('');
+  const [remember, setRemember] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +32,7 @@ export default function StaffLoginForm({ demo }: { demo: boolean }) {
       const res = await fetch('/api/admin/session', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(demo ? { passcode } : { email, password }),
+        body: JSON.stringify(demo ? { passcode, remember } : { email, password, remember }),
       });
       const body = (await res.json()) as ApiResponse<unknown>;
 
@@ -48,7 +51,7 @@ export default function StaffLoginForm({ demo }: { demo: boolean }) {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3">
+    <form onSubmit={submit} className="space-y-4">
       {demo ? (
         <Field
           label={copy.admin.passcode}
@@ -56,6 +59,8 @@ export default function StaffLoginForm({ demo }: { demo: boolean }) {
           value={passcode}
           onChange={setPasscode}
           autoComplete="off"
+          tone="staff"
+          autoFocus
         />
       ) : (
         <>
@@ -65,6 +70,8 @@ export default function StaffLoginForm({ demo }: { demo: boolean }) {
             value={email}
             onChange={setEmail}
             autoComplete="username"
+            tone="staff"
+            autoFocus
           />
           <Field
             label={copy.admin.password}
@@ -72,13 +79,22 @@ export default function StaffLoginForm({ demo }: { demo: boolean }) {
             value={password}
             onChange={setPassword}
             autoComplete="current-password"
+            tone="staff"
           />
         </>
       )}
 
-      {error && (
-        <p className="rounded-lg bg-rose-500/10 px-3 py-2.5 text-xs text-rose-300">{error}</p>
-      )}
+      {/* Defaults to off here: a shared back-office machine should not stay
+          signed in. The customer app defaults it on. */}
+      <Checkbox
+        label={copy.auth.rememberMe}
+        hint={copy.auth.rememberHint}
+        checked={remember}
+        onChange={setRemember}
+        tone="staff"
+      />
+
+      {error && <p className="rounded-lg bg-rose-500/10 px-3 py-2.5 text-xs text-rose-300">{error}</p>}
 
       <button
         type="submit"
@@ -91,32 +107,5 @@ export default function StaffLoginForm({ demo }: { demo: boolean }) {
 
       {demo && <p className="text-[11px] leading-relaxed text-slate-500">{copy.admin.passcodeHint}</p>}
     </form>
-  );
-}
-
-function Field({
-  label,
-  type,
-  value,
-  onChange,
-  autoComplete,
-}: {
-  label: string;
-  type: string;
-  value: string;
-  onChange: (v: string) => void;
-  autoComplete: string;
-}) {
-  return (
-    <label className="block text-xs font-medium text-slate-300">
-      {label}
-      <input
-        type={type}
-        value={value}
-        autoComplete={autoComplete}
-        onChange={(e) => onChange(e.target.value)}
-        className="mt-1.5 w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 outline-none transition-colors focus:border-sky-500"
-      />
-    </label>
   );
 }

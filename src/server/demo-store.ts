@@ -9,6 +9,7 @@ import {
   DEMO_VIP_PLANS,
   demoEpisode,
 } from '@/lib/demo/catalog';
+import { PERSIST_COOKIE, PERSIST_MAX_AGE, persistenceOptions } from '@/lib/session-persistence';
 import type {
   CoinLedgerEntry,
   Payment,
@@ -33,7 +34,7 @@ import { seal, unsign } from './signed-cookie';
 
 const COOKIE = 'phd_demo';
 const STAFF_COOKIE = 'phd_staff';
-const VERSION = 1;
+const VERSION = 3;
 const MAX_UNLOCKS = 120;
 const MAX_PAYMENTS = 10;
 const MAX_LEDGER = 12;
@@ -53,7 +54,20 @@ export interface DemoPayment {
   note: string | null;
 }
 
+export interface DemoAccount {
+  email: string;
+  displayName: string;
+}
+
 export interface DemoState {
+  /**
+   * Who these balances belong to. Survives sign-out, so signing back in with
+   * the same address picks up where you left off and a different address
+   * starts clean.
+   */
+  account: DemoAccount | null;
+  /** False means signed out. Free episodes still play; nothing else does. */
+  signedIn: boolean;
   coins: number;
   vipExpiresAt: number | null;
   unlocks: string[];
@@ -63,6 +77,8 @@ export interface DemoState {
 
 type Wire = {
   v: number;
+  a: [string, string] | null;
+  i: 0 | 1;
   c: number;
   x: number | null;
   u: string[];
@@ -96,6 +112,8 @@ function unpackEpisodeId(packed: string): string | null {
 function encode(state: DemoState): string {
   const wire: Wire = {
     v: VERSION,
+    a: state.account ? [state.account.email, state.account.displayName] : null,
+    i: state.signedIn ? 1 : 0,
     c: state.coins,
     x: state.vipExpiresAt,
     u: state.unlocks.slice(-MAX_UNLOCKS).map(packEpisodeId).filter((v): v is string => v !== null),
@@ -115,6 +133,8 @@ function decode(raw: string | undefined): DemoState | null {
     const wire = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as Wire;
     if (wire.v !== VERSION) return null;
     return {
+      account: wire.a ? { email: wire.a[0], displayName: wire.a[1] } : null,
+      signedIn: wire.i === 1,
       coins: wire.c,
       vipExpiresAt: wire.x,
       unlocks: wire.u.map(unpackEpisodeId).filter((v): v is string => v !== null),
@@ -137,8 +157,10 @@ function decode(raw: string | undefined): DemoState | null {
   }
 }
 
-export function freshDemoState(): DemoState {
+export function freshDemoState(account: DemoAccount | null = null): DemoState {
   return {
+    account,
+    signedIn: account !== null,
     coins: STARTING_COINS,
     vipExpiresAt: null,
     unlocks: [],
@@ -155,12 +177,36 @@ export async function readDemoState(): Promise<DemoState> {
 /** Only callable from a route handler or server action. */
 export async function writeDemoState(state: DemoState): Promise<void> {
   const jar = await cookies();
-  jar.set(COOKIE, encode(state), {
+  const remember = jar.get(PERSIST_COOKIE)?.value === '1';
+
+  jar.set(
+    COOKIE,
+    encode(state),
+    persistenceOptions(
+      {
+        httpOnly: true,
+        sameSite: 'lax' as const,
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+      },
+      remember,
+    ),
+  );
+}
+
+/** Records the "remember me" choice for whichever backend is in play. */
+export async function writePersistence(remember: boolean): Promise<void> {
+  const jar = await cookies();
+  if (!remember) {
+    jar.delete(PERSIST_COOKIE);
+    return;
+  }
+  jar.set(PERSIST_COOKIE, '1', {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     path: '/',
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: PERSIST_MAX_AGE,
   });
 }
 
@@ -173,11 +219,14 @@ export async function clearDemoState(): Promise<void> {
 // projections
 // ---------------------------------------------------------------------------
 
-export function demoViewer(state: DemoState): Viewer {
+/** Null when signed out — the same answer live mode gives for an anonymous visitor. */
+export function demoViewer(state: DemoState): Viewer | null {
+  if (!state.signedIn || !state.account) return null;
+
   const isVip = Boolean(state.vipExpiresAt && state.vipExpiresAt > Date.now());
   return {
     id: 'demo-viewer',
-    displayName: 'Demo Viewer',
+    displayName: state.account.displayName,
     // A demo viewer is always an ordinary customer. Staff access is a separate
     // session on a separate cookie — see the staff helpers at the bottom.
     role: 'user',
@@ -206,7 +255,7 @@ export function demoPayments(state: DemoState): Payment[] {
   return state.payments.map((p) => ({
     id: p.id,
     userId: 'demo-viewer',
-    userName: 'Demo Viewer',
+    userName: state.account?.displayName ?? 'Demo Viewer',
     kind: p.kind,
     itemName: itemNameFor(p.kind, p.itemId),
     amountPhp: demoAmountFor(p.kind, p.itemId) ?? 0,
@@ -314,16 +363,63 @@ export async function readDemoStaff(): Promise<Staff | null> {
 
 export async function writeDemoStaff(): Promise<void> {
   const jar = await cookies();
-  jar.set(STAFF_COOKIE, seal('superadmin'), {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: 60 * 60 * 8,
-  });
+  const remember = jar.get(PERSIST_COOKIE)?.value === '1';
+
+  jar.set(
+    STAFF_COOKIE,
+    seal('superadmin'),
+    persistenceOptions(
+      {
+        httpOnly: true,
+        sameSite: 'lax' as const,
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        // A staff session is short even when remembered.
+        maxAge: 60 * 60 * 8,
+      },
+      remember,
+    ),
+  );
 }
 
 export async function clearDemoStaff(): Promise<void> {
   const jar = await cookies();
   jar.delete(STAFF_COOKIE);
+}
+
+// ---------------------------------------------------------------------------
+// demo accounts
+//
+// One browser, one account. Signing out keeps the coins and unlocks in the
+// cookie so signing back in with the same address picks up where you left off;
+// a different address starts fresh.
+// ---------------------------------------------------------------------------
+
+export function nameFromEmail(email: string): string {
+  const local = email.split('@')[0] ?? 'Viewer';
+  return local
+    .split(/[._-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+    .slice(0, 40) || 'Viewer';
+}
+
+export function demoSignIn(state: DemoState, email: string, displayName?: string): DemoState {
+  const normalised = email.trim().toLowerCase();
+  const returning = state.account?.email === normalised;
+
+  const account: DemoAccount = {
+    email: normalised,
+    displayName:
+      displayName?.trim() ||
+      (returning ? state.account?.displayName : undefined) ||
+      nameFromEmail(normalised),
+  };
+
+  return returning ? { ...state, account, signedIn: true } : freshDemoState(account);
+}
+
+export function demoSignOut(state: DemoState): DemoState {
+  return { ...state, signedIn: false };
 }

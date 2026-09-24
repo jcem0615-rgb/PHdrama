@@ -1,6 +1,8 @@
-import { Coins, Crown, Receipt, Ticket } from 'lucide-react';
+import { Coins, Crown, LogIn, Receipt, Ticket, UserPlus } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+
+import SignOutButton from '@/components/SignOutButton';
 
 import { copy } from '@/lib/copy';
 import { formatCoins, formatDateTime, formatPhp, formatRemaining } from '@/lib/format';
@@ -31,8 +33,27 @@ export default async function MePage() {
 
   if (!viewer) {
     return (
-      <main className="mx-auto max-w-md px-4 pb-28 pt-24 text-center">
-        <p className="text-sm text-ink-400">{copy.unlock.signInFirst}</p>
+      <main className="mx-auto max-w-md px-4 pb-28 pt-24">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6 text-center">
+          <h1 className="text-lg font-bold">{copy.me.signedOutTitle}</h1>
+          <p className="mt-2 text-sm leading-relaxed text-ink-400">{copy.me.signedOutBody}</p>
+
+          <Link
+            href="/auth/sign-in?next=%2Fme"
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-flame-500 to-ember-500 py-3.5 text-sm font-bold"
+          >
+            <LogIn className="h-4 w-4" />
+            {copy.auth.signIn}
+          </Link>
+
+          <Link
+            href="/auth/sign-up?next=%2Fme"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] py-3.5 text-sm font-semibold text-ink-200"
+          >
+            <UserPlus className="h-4 w-4" />
+            {copy.auth.signUp}
+          </Link>
+        </div>
       </main>
     );
   }
@@ -147,6 +168,10 @@ export default async function MePage() {
           ))}
         </ul>
       </Section>
+
+      <div className="mt-10">
+        <SignOutButton />
+      </div>
     </main>
   );
 }

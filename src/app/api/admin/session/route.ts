@@ -7,6 +7,7 @@ import {
   clearDemoStaff,
   demoAdminPasscode,
   writeDemoStaff,
+  writePersistence,
 } from '@/server/demo-store';
 import { isDemoMode } from '@/server/repository';
 
@@ -25,7 +26,10 @@ export async function POST(req: NextRequest) {
     passcode?: string;
     email?: string;
     password?: string;
+    remember?: boolean;
   } | null;
+
+  await writePersistence(body?.remember === true);
 
   if (isDemoMode()) {
     const expected = demoAdminPasscode();
@@ -65,6 +69,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE() {
+  await writePersistence(false);
+
   if (isDemoMode()) {
     await clearDemoStaff();
     return ok({ signedOut: true });

@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { Coins, Crown, Lock, PlayCircle, X } from 'lucide-react';
+import { Coins, Crown, Lock, LogIn, PlayCircle, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -116,9 +116,19 @@ export default function UnlockSheet({ episode, viewer, rewardedAdsEnabled, open,
             )}
 
             <div className="space-y-3">
+              {!viewer && (
+                <Link
+                  href={`/auth/sign-in?next=${encodeURIComponent(`/watch/${episode.id}`)}`}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-flame-500 to-ember-500 px-5 py-4 text-sm font-bold"
+                >
+                  <LogIn className="h-4 w-4" />
+                  {copy.unlock.signInCta}
+                </Link>
+              )}
+
               <button
                 type="button"
-                disabled={busy || !affordable}
+                disabled={busy || !affordable || !viewer}
                 onClick={unlockWithCoins}
                 className="flex w-full items-center justify-between rounded-2xl bg-gradient-to-r from-flame-500 to-ember-500 px-5 py-4 text-left font-semibold text-white disabled:from-ink-800 disabled:to-ink-800 disabled:text-ink-400"
               >
@@ -131,7 +141,7 @@ export default function UnlockSheet({ episode, viewer, rewardedAdsEnabled, open,
                 </span>
               </button>
 
-              {!affordable && (
+              {viewer && !affordable && (
                 <Link
                   href="/coins"
                   className="flex w-full items-center justify-center gap-2 rounded-2xl bg-coin-500/15 px-5 py-3.5 text-sm font-semibold text-coin-500"
@@ -142,7 +152,7 @@ export default function UnlockSheet({ episode, viewer, rewardedAdsEnabled, open,
 
               <button
                 type="button"
-                disabled={busy || !rewardedAdsEnabled}
+                disabled={busy || !rewardedAdsEnabled || !viewer}
                 onClick={unlockWithAd}
                 className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-left font-medium disabled:opacity-40"
               >

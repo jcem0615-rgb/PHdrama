@@ -11,7 +11,7 @@ import type { Viewer } from '@/lib/types';
  *
  * `/admin` gets none of it — the staff portal brings its own shell, so a
  * customer's coin balance and nav never appear over it, and nothing in the
- * customer chrome ever links into it.
+ * customer chrome ever links into it. `/auth` is standalone too.
  *
  * `/reels` and `/watch` are immersive: the video owns the viewport, so the
  * header steps out of the way.
@@ -19,7 +19,8 @@ import type { Viewer } from '@/lib/types';
 export default function AppChrome({ viewer, demo }: { viewer: Viewer | null; demo: boolean }) {
   const pathname = usePathname();
 
-  if (pathname.startsWith('/admin')) return null;
+  // The staff portal brings its own shell; the auth pages are standalone.
+  if (pathname.startsWith('/admin') || pathname.startsWith('/auth')) return null;
 
   const immersive = pathname.startsWith('/reels') || pathname.startsWith('/watch');
 

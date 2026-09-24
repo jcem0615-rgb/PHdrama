@@ -38,6 +38,8 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
 - Route handlers return `{ ok: true, data } | { ok: false, error: { code, message } }`.
 - UI copy is English with Filipino-friendly phrasing; keep strings in `src/lib/copy.ts` so Taglish variants are easy later.
 - Mobile-first: design at 390×844, reels feed is `h-[100dvh]` snap-y.
+- Auth forms use `src/components/form/Field` (reveal toggle built in) and
+  `Checkbox`, with `tone="customer"` or `tone="staff"`. Do not hand-roll inputs.
 
 ## Current state
 - ✅ Spec, architecture docs, build order
@@ -51,8 +53,11 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
   runs with no Supabase attached (see `docs/ARCHITECTURE.md`)
 - ✅ Staff portal split out of the customer app: own shell, own sign-in, own
   session (`getStaff()`); the demo customer is a plain `user`
+- ✅ Customer auth: `/auth/sign-in`, `/auth/sign-up`, sign-out on `/me`, with a
+  show-password toggle and a working "remember me" (`phd_persist` controls the
+  session cookie's lifetime, re-applied on every Supabase refresh)
 - ⬜ Phases 8–10: rewarded ads, DRM / Android wrapper, AI content pipeline
-- ⬜ No customer-facing auth UI yet — live mode has sign-in only for staff
+- ⬜ No password reset or email-change flow yet
 
 **Demo mode:** with no Supabase env vars the app serves an in-memory catalogue and
 keeps viewer state in one signed httpOnly cookie, with the staff session on a
