@@ -22,8 +22,23 @@ is green (`npm run lint && npm run typecheck && npm run build`).
       upload, `/me` history, duplicate-reference rejection.
 - [x] **Phase 7 — Admin.** Payment queue with signed receipt previews, approve/reject,
       coin and VIP adjustments, ledger views.
+- [x] **Phase 7.5 — Manual adjustments.** `/admin/viewers`: SuperAdmin coin
+      adjustments and VIP grants/revocations, both through the existing
+      `admin_adjust_coins` / `admin_set_vip` functions, with a required reason
+      that lands in the ledger.
 - [ ] **Phase 8 — Ads.** Pick a network (GAM rewarded web / AdSense H5 / native via
       a wrapper), implement server-side verification, then lift the feature flag.
 - [ ] **Phase 9 — Hardening.** DRM provider, Android wrapper for `FLAG_SECURE`,
       perceptual-hash receipt dedupe, OCR on amounts and dates.
-- [ ] **Phase 10 — AI pipeline.** Script → voice → video job queue behind the admin UI.
+- [~] **Phase 10 — AI pipeline.** Story Studio at `/admin/studio`.
+      **Done:** premise → per-episode scene breakdown (beat, script, cliffhanger
+      hook) via Claude, persisted as `stories` + `story_scenes`, one queued
+      `render_jobs` row per scene, and `publish_story()` to turn a story into a
+      series whose episodes are its scenes.
+      **Not done:** the video itself. No text-to-video provider is chosen, so
+      nothing drains the render queue — implement `VideoProvider` in
+      `src/server/story/video.ts` and a worker that fills `output_path`.
+      A story with unrendered scenes publishes as a **draft** series, so viewers
+      never meet an episode with no video behind it.
+      **Also not done:** ElevenLabs narration, and a review/edit pass on scenes
+      before publishing.

@@ -107,6 +107,41 @@ table, the column grants that stop `authenticated` from touching `coin_balance`,
 `vip_expires_at` or `role`, the `SECURITY DEFINER` functions that move money, and
 the storage buckets and policies.
 
+## Staff portal
+
+| Page | What it does |
+| --- | --- |
+| `/admin` | Payment queue — approve or reject, which credits coins or extends VIP |
+| `/admin/viewers` | **SuperAdmin only.** Adjust a customer's coins, grant or revoke VIP |
+| `/admin/studio` | Story Studio — premise → episode breakdown → publish as a series |
+
+Coin and VIP adjustments call `admin_adjust_coins` / `admin_set_vip`, which are
+SuperAdmin-only in Postgres and write the ledger row in the same transaction.
+The reason box is required because that string *is* the audit trail. VIP grants
+stack: granting 7 days to an active VIP extends from the current expiry, it does
+not reset it.
+
+## Story Studio
+
+Write a premise, pick an episode count, and Claude returns a per-episode
+breakdown — beat, script, and the cliffhanger hook each episode ends on, with
+the hardest hook on episode 5 because that is the last free one. The story is
+saved with one queued render job per scene, and `publish_story()` turns it into
+a series whose episodes are its scenes.
+
+Set `ANTHROPIC_API_KEY` to get real scripts. Without it a local outliner runs
+instead so the pipeline is still clickable, but the scripts are placeholder text.
+
+**The video itself is not built.** No text-to-video provider is chosen, so the
+render queue has nothing draining it — implement `VideoProvider` in
+`src/server/story/video.ts` and a worker that uploads to the private `videos`
+bucket and fills `output_path`. Until then a story with unrendered scenes
+publishes as a **draft** series, so viewers never meet an episode with no video
+behind it.
+
+Demo mode has nowhere to persist, so the Studio generates and previews a
+breakdown but cannot save or publish it.
+
 ## Commands
 
 | Command | What it does |

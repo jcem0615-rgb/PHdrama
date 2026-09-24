@@ -56,8 +56,15 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
 - ✅ Customer auth: `/auth/sign-in`, `/auth/sign-up`, sign-out on `/me`, with a
   show-password toggle and a working "remember me" (`phd_persist` controls the
   session cookie's lifetime, re-applied on every Supabase refresh)
-- ⬜ Phases 8–10: rewarded ads, DRM / Android wrapper, AI content pipeline
+- ✅ `/admin/viewers` — SuperAdmin coin adjustments and VIP grant/revoke, through
+  `admin_adjust_coins` / `admin_set_vip`, reason required, ledger written
+- 🟡 `/admin/studio` — premise → episode breakdown (Claude, `claude-opus-5`) →
+  `stories` + `story_scenes` + queued `render_jobs` → `publish_story()`.
+  **No video provider is chosen**, so nothing drains the render queue and a
+  story with unrendered scenes publishes as a draft series
+- ⬜ Phases 8–9: rewarded ads, DRM / Android wrapper
 - ⬜ No password reset or email-change flow yet
+- ⬜ No ElevenLabs narration; no scene review/edit pass before publishing
 
 **Demo mode:** with no Supabase env vars the app serves an in-memory catalogue and
 keeps viewer state in one signed httpOnly cookie, with the staff session on a
@@ -74,3 +81,7 @@ they are the fallback that keeps previews clickable.
 - **VIP stacking:** approving VIP while active extends from current expiry (implemented). Confirm this is the intended business rule.
 - **Refunds / chargebacks:** manual only via `admin_adjust_coins` / `admin_set_vip` for now.
 - **Content rights for AI-generated dramas:** check terms of each video/voice provider before monetizing.
+- **Video provider:** not chosen. `src/server/story/video.ts` defines the
+  `VideoProvider` seam and `activeVideoProvider()` returns null. Providers differ
+  on price, clip length, aspect ratio and commercial-use terms, and most are
+  submit-then-poll rather than synchronous — pick one before writing the worker.

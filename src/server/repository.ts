@@ -15,10 +15,13 @@ import { createServerSupabase } from '@/lib/supabase/server';
 import type {
   CoinLedgerEntry,
   CoinPackage,
+  Customer,
   Episode,
   Payment,
   PaymentMethod,
   Series,
+  Story,
+  StoryScene,
   VipPlan,
   Viewer,
 } from '@/lib/types';
@@ -376,10 +379,136 @@ export async function listCoinLedger(): Promise<CoinLedgerEntry[]> {
   }));
 }
 
+/** Staff view of customers. RLS already limits this to admins; the page checks too. */
+export async function listCustomers(): Promise<Customer[]> {
+  if (isDemoMode()) {
+    const state = await readDemoState();
+    if (!state.account) return [];
+    return [
+      {
+        id: 'demo-viewer',
+        displayName: state.account.displayName,
+        role: 'user',
+        coinBalance: state.coins,
+        vipExpiresAt: state.vipExpiresAt ? new Date(state.vipExpiresAt).toISOString() : null,
+        isVip: Boolean(state.vipExpiresAt && state.vipExpiresAt > Date.now()),
+        createdAt: new Date().toISOString(),
+      },
+    ];
+  }
+
+  const supabase = await createServerSupabase();
+  if (!supabase) return [];
+
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, display_name, role, coin_balance, vip_expires_at, created_at')
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    displayName: row.display_name ?? 'Viewer',
+    role: row.role,
+    coinBalance: row.coin_balance,
+    vipExpiresAt: row.vip_expires_at,
+    isVip: Boolean(row.vip_expires_at && new Date(row.vip_expires_at).getTime() > Date.now()),
+    createdAt: row.created_at,
+  }));
+}
+
 export async function listUnlockedEpisodes(): Promise<Episode[]> {
   const viewer = await getViewer();
   if (!viewer) return [];
 
   const episodes = await Promise.all(viewer.unlockedEpisodeIds.map((id) => getEpisode(id)));
   return episodes.filter((e): e is Episode => e !== null);
+}
+
+
+// ---------------------------------------------------------------------------
+// story studio (live mode only — demo mode has nowhere to persist)
+// ---------------------------------------------------------------------------
+
+export async function listStories(): Promise<Story[]> {
+  if (isDemoMode()) return [];
+
+  const supabase = await createServerSupabase();
+  if (!supabase) return [];
+
+  const { data } = await supabase
+    .from('stories')
+    .select(
+      'id, title, logline, tags, target_episodes, status, model, series_id, created_at, ' +
+        'story_scenes(count), render_jobs(status)',
+    )
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  return (data ?? []).map((row) => {
+    const r = row as unknown as {
+      id: string;
+      title: string;
+      logline: string;
+      tags: string[] | null;
+      target_episodes: number;
+      status: Story['status'];
+      model: string | null;
+      series_id: string | null;
+      created_at: string;
+      story_scenes: { count: number }[] | null;
+      render_jobs: { status: string }[] | null;
+    };
+
+    return {
+      id: r.id,
+      title: r.title,
+      logline: r.logline ?? '',
+      tags: r.tags ?? [],
+      targetEpisodes: r.target_episodes,
+      status: r.status,
+      model: r.model,
+      seriesId: r.series_id,
+      sceneCount: r.story_scenes?.[0]?.count ?? 0,
+      renderedCount: (r.render_jobs ?? []).filter((j) => j.status === 'succeeded').length,
+      createdAt: r.created_at,
+    };
+  });
+}
+
+export async function listStoryScenes(storyId: string): Promise<StoryScene[]> {
+  if (isDemoMode()) return [];
+
+  const supabase = await createServerSupabase();
+  if (!supabase) return [];
+
+  const { data } = await supabase
+    .from('story_scenes')
+    .select('id, scene_number, title, beat, script, hook, duration_seconds, render_jobs(status)')
+    .eq('story_id', storyId)
+    .order('scene_number');
+
+  return (data ?? []).map((row) => {
+    const r = row as unknown as {
+      id: string;
+      scene_number: number;
+      title: string;
+      beat: string;
+      script: string;
+      hook: string;
+      duration_seconds: number;
+      render_jobs: { status: StoryScene['renderStatus'] }[] | null;
+    };
+
+    return {
+      id: r.id,
+      sceneNumber: r.scene_number,
+      title: r.title,
+      beat: r.beat ?? '',
+      script: r.script ?? '',
+      hook: r.hook ?? '',
+      durationSeconds: r.duration_seconds,
+      renderStatus: r.render_jobs?.[0]?.status ?? null,
+    };
+  });
 }

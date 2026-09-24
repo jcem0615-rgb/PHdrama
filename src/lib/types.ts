@@ -55,6 +55,17 @@ export interface Staff {
   role: 'admin' | 'superadmin';
 }
 
+/** A customer as the staff portal sees them. */
+export interface Customer {
+  id: string;
+  displayName: string;
+  role: Role;
+  coinBalance: number;
+  vipExpiresAt: string | null;
+  isVip: boolean;
+  createdAt: string;
+}
+
 export interface CoinPackage {
   id: string;
   code: string;
@@ -104,6 +115,34 @@ export interface CoinLedgerEntry {
   delta: number;
   balanceAfter: number;
   reason: string;
+  createdAt: string;
+}
+
+export type StoryStatus = 'draft' | 'scripted' | 'rendering' | 'ready' | 'published' | 'failed';
+export type RenderStatus = 'queued' | 'running' | 'succeeded' | 'failed';
+
+export interface StoryScene {
+  id: string;
+  sceneNumber: number;
+  title: string;
+  beat: string;
+  script: string;
+  hook: string;
+  durationSeconds: number;
+  renderStatus: RenderStatus | null;
+}
+
+export interface Story {
+  id: string;
+  title: string;
+  logline: string;
+  tags: string[];
+  targetEpisodes: number;
+  status: StoryStatus;
+  model: string | null;
+  seriesId: string | null;
+  sceneCount: number;
+  renderedCount: number;
   createdAt: string;
 }
 
