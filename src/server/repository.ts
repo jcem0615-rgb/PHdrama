@@ -453,6 +453,19 @@ export async function listUnlockedEpisodes(): Promise<Episode[]> {
 // story studio (live mode only — demo mode has nowhere to persist)
 // ---------------------------------------------------------------------------
 
+/** Demo mode: the stories currently live in this browser's reels feed. */
+export async function listPostedDemoStories(): Promise<
+  { slug: string; title: string; episodes: number }[]
+> {
+  if (!isDemoMode()) return [];
+  const posted = await readPostedStories();
+  return posted.map((story) => ({
+    slug: story.slug,
+    title: story.title,
+    episodes: story.scenes.length,
+  }));
+}
+
 export async function listStories(): Promise<Story[]> {
   if (isDemoMode()) return [];
 

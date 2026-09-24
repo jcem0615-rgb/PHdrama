@@ -228,6 +228,15 @@ export const copy = {
       'Published as a draft — the series stays hidden from viewers until every episode has a rendered video. Use Post to reels to make it visible now as a preview.',
     savedStories: 'Saved stories',
     noStories: 'Nothing written yet.',
+    liveNow: 'Live in the reels feed',
+    liveNowEmpty:
+      'Nothing posted yet. Write a breakdown above, then press Post to reels — it shows up in the customer app straight away.',
+    liveEpisodes: (n: number) => `${n} episodes · free preview`,
+    openInApp: 'Open',
+    takeDown: 'Take down',
+    takingDown: 'Removing…',
+    demoOneStory:
+      'Demo mode keeps one posted story at a time (cookie-sized). Posting another replaces this one.',
     demoNotPersisted:
       'Demo mode has no database, so this breakdown is not saved and cannot be published. Connect Supabase to keep stories, queue renders and publish them as a series.',
     videoPending:

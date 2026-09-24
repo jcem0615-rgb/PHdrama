@@ -64,7 +64,9 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
 - 🟡 `/admin/studio` — premise → episode breakdown (Claude, `claude-opus-5`) →
   `stories` + `story_scenes` + queued `render_jobs` → `publish_story()`.
   **Post to reels** ships it to customers now as a free `is_preview` series
-  (migration 0003): real scripts, placeholder clip, generated title card.
+  (migration 0003). Preview episodes play a *storyboard reel* — the episode's
+  beats animated over the placeholder clip by `StoryboardReel`, on its own clock
+  so they stay readable. Demo mode lists what is live with Open / Take down.
   **No video provider is chosen**, so nothing drains the render queue
 - ✅ Generated poster art at `/api/posters/[episodeId]` (SVG title card from the
   episode's own words; `?plain=1` for surfaces that draw their own heading)

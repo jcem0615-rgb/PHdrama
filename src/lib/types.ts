@@ -39,6 +39,8 @@ export interface Episode {
   isFree: boolean;
   posterHue: number;
   isPreview?: boolean;
+  /** Story Studio scene beat, when the episode came from one. */
+  beat?: string;
 }
 
 export interface Viewer {
@@ -164,11 +166,17 @@ export interface PlaybackTicket {
   watermarkCode: string;
   expiresAt: string;
   /**
-   * Set when the episode has no rendered video yet. The player draws this over
-   * the placeholder clip so the reel carries the episode's own words instead of
-   * looking like every other one.
+   * Set when the episode has no rendered video yet. The player animates these
+   * beats over the placeholder clip — a storyboard reel of the episode's own
+   * words, rather than every episode looking identical.
    */
-  previewCard: { title: string; hook: string; episodeNumber: number } | null;
+  storyboard: {
+    episodeNumber: number;
+    seriesTitle: string;
+    title: string;
+    beat: string;
+    hook: string;
+  } | null;
 }
 
 export type ApiErrorCode =

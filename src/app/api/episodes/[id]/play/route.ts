@@ -5,7 +5,7 @@ import { fail, ok } from '@/lib/api';
 import { DEMO_FALLBACK_CLIP, demoStreamFor } from '@/lib/demo/catalog';
 import { canWatch } from '@/lib/access';
 import { createServerSupabase } from '@/lib/supabase/server';
-import type { PlaybackTicket } from '@/lib/types';
+import type { Episode, PlaybackTicket } from '@/lib/types';
 import { createAdminSupabase } from '@/server/supabase-admin';
 import { getEpisode, getViewer, isDemoMode } from '@/server/repository';
 
@@ -17,6 +17,17 @@ const TICKET_SECONDS = 90;
 /** Random, meaningless on its own, resolvable only through viewer_sessions. */
 function watermarkCode(): string {
   return randomBytes(5).toString('hex').toUpperCase();
+}
+
+/** The beats the player animates when an episode has no rendered video yet. */
+function storyboardFor(episode: Episode): PlaybackTicket['storyboard'] {
+  return {
+    episodeNumber: episode.episodeNumber,
+    seriesTitle: episode.seriesTitle,
+    title: episode.title,
+    beat: episode.beat ?? '',
+    hook: episode.synopsis ?? '',
+  };
 }
 
 /**
@@ -45,13 +56,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       fallbackSrc: DEMO_FALLBACK_CLIP,
       watermarkCode: watermarkCode(),
       expiresAt,
-      previewCard: episode.isPreview
-        ? {
-            title: episode.title,
-            hook: episode.synopsis,
-            episodeNumber: episode.episodeNumber,
-          }
-        : null,
+      storyboard: episode.isPreview ? storyboardFor(episode) : null,
     });
   }
 
@@ -86,11 +91,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       fallbackSrc: null,
       watermarkCode: code,
       expiresAt,
-      previewCard: {
-        title: episode.title,
-        hook: episode.synopsis,
-        episodeNumber: episode.episodeNumber,
-      },
+      storyboard: storyboardFor(episode),
     });
   }
 
@@ -114,6 +115,6 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     fallbackSrc: null,
     watermarkCode: code,
     expiresAt,
-    previewCard: null,
+    storyboard: null,
   });
 }

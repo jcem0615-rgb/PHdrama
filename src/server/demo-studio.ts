@@ -20,10 +20,13 @@ import { seal, unsign } from './signed-cookie';
  */
 
 const COOKIE = 'phd_studio';
-const VERSION = 1;
-const MAX_STORIES = 2;
+const VERSION = 2;
+// One story at a time: the cookie has to carry a beat per episode now, and
+// 4 KB does not stretch to two.
+const MAX_STORIES = 1;
 const MAX_SCENES = 12;
 const MAX_TITLE = 40;
+const MAX_BEAT = 76;
 const MAX_HOOK = 64;
 
 /** Cookie budget is tight, so long fields get cut — at a word boundary. */
@@ -36,6 +39,7 @@ function clip(value: string, max: number): string {
 export interface DemoPostedScene {
   n: number;
   title: string;
+  beat: string;
   hook: string;
   seconds: number;
 }
@@ -51,7 +55,9 @@ export interface DemoPostedStory {
 
 type Wire = {
   v: number;
-  s: Array<[string, string, string, string[], number, Array<[number, string, string, number]>]>;
+  s: Array<
+    [string, string, string, string[], number, Array<[number, string, string, string, number]>]
+  >;
 };
 
 function encode(stories: DemoPostedStory[]): string {
@@ -65,7 +71,13 @@ function encode(stories: DemoPostedStory[]): string {
       story.postedAt,
       story.scenes
         .slice(0, MAX_SCENES)
-        .map((scene) => [scene.n, clip(scene.title, MAX_TITLE), clip(scene.hook, MAX_HOOK), scene.seconds]),
+        .map((scene) => [
+          scene.n,
+          clip(scene.title, MAX_TITLE),
+          clip(scene.beat, MAX_BEAT),
+          clip(scene.hook, MAX_HOOK),
+          scene.seconds,
+        ]),
     ]),
   };
   return seal(Buffer.from(JSON.stringify(wire)).toString('base64url'));
@@ -85,7 +97,13 @@ function decode(raw: string | undefined): DemoPostedStory[] {
       logline,
       tags,
       postedAt,
-      scenes: scenes.map(([n, sceneTitle, hook, seconds]) => ({ n, title: sceneTitle, hook, seconds })),
+      scenes: scenes.map(([n, sceneTitle, beat, hook, seconds]) => ({
+        n,
+        title: sceneTitle,
+        beat,
+        hook,
+        seconds,
+      })),
     }));
   } catch {
     return [];
@@ -164,6 +182,7 @@ export function postedStoryToEpisodes(story: DemoPostedStory): Episode[] {
     durationSeconds: scene.seconds,
     coinPrice: 0,
     isFree: true,
+    beat: scene.beat,
     posterHue: (hueFromKey(story.slug) + scene.n * 7) % 360,
     isPreview: true,
   }));

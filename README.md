@@ -152,9 +152,17 @@ bucket and fills `output_path`. Until then a story with unrendered scenes
 publishes as a **draft** series, so viewers never meet an episode with no video
 behind it.
 
+What plays is a **storyboard reel**: the episode's own beats — title, what
+happens, the cliffhanger — animated over the placeholder clip on their own
+clock, so each episode plays its own story instead of the same silent loop. It
+is an animatic, not generated footage, and the PREVIEW badge says so. It
+disappears the moment a real render lands.
+
 Demo mode has nowhere to persist a full story, so posting keeps only what the
-feed needs (title, hook, duration) in its own cookie: up to 2 posted stories of
-12 episodes each. The scripts themselves are shown once and not stored.
+feed needs (title, beat, hook, duration) in its own cookie — one posted story at
+a time, up to 12 episodes. The Studio lists what is currently live with an Open
+and a Take down button, so the loop is testable across page loads. The scripts
+themselves are shown once and not stored.
 
 ## Commands
 

@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 
 import { fail, ok } from '@/lib/api';
 import {
+  clearPostedStories,
   type DemoPostedStory,
   readPostedStories,
   slugForStory,
@@ -14,7 +15,7 @@ import { getStaff } from '@/server/staff';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const MAX_STORIES = 2;
+const MAX_STORIES = 1;
 
 /**
  * Demo-mode "post to reels".
@@ -32,7 +33,13 @@ export async function POST(req: NextRequest) {
     title?: string;
     logline?: string;
     tags?: string[];
-    scenes?: { scene_number: number; title: string; hook: string; duration_seconds: number }[];
+    scenes?: {
+      scene_number: number;
+      title: string;
+      beat: string;
+      hook: string;
+      duration_seconds: number;
+    }[];
   } | null;
 
   const title = body?.title?.trim();
@@ -51,6 +58,7 @@ export async function POST(req: NextRequest) {
     scenes: scenes.map((scene) => ({
       n: scene.scene_number,
       title: scene.title,
+      beat: scene.beat ?? '',
       hook: scene.hook,
       seconds: Math.max(1, Math.round(scene.duration_seconds)),
     })),
@@ -61,4 +69,20 @@ export async function POST(req: NextRequest) {
   await writePostedStories(next);
 
   return ok({ slug: story.slug, episodes: story.scenes.length, dropped: existing.length + 1 > MAX_STORIES });
+}
+
+
+/** Take a posted story back down. */
+export async function DELETE(req: NextRequest) {
+  const staff = await getStaff();
+  if (!staff) return fail('FORBIDDEN');
+  if (!isDemoMode()) return fail('FEATURE_DISABLED');
+
+  const slug = req.nextUrl.searchParams.get('slug');
+  const remaining = (await readPostedStories()).filter((story) => story.slug !== slug);
+
+  if (remaining.length === 0) await clearPostedStories();
+  else await writePostedStories(remaining);
+
+  return ok({ removed: true });
 }

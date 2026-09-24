@@ -1,6 +1,15 @@
 'use client';
 
-import { AlertTriangle, Clapperboard, Film, Loader2, Send, Sparkles, Upload } from 'lucide-react';
+import {
+  AlertTriangle,
+  Clapperboard,
+  Film,
+  Loader2,
+  Send,
+  Sparkles,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -31,7 +40,21 @@ interface Result {
   storyId: string | null;
 }
 
-export default function StoryStudio({ stories, demo }: { stories: Story[]; demo: boolean }) {
+export interface PostedSummary {
+  slug: string;
+  title: string;
+  episodes: number;
+}
+
+export default function StoryStudio({
+  stories,
+  posted,
+  demo,
+}: {
+  stories: Story[];
+  posted: PostedSummary[];
+  demo: boolean;
+}) {
   const router = useRouter();
   const [premise, setPremise] = useState('');
   const [title, setTitle] = useState('');
@@ -79,6 +102,8 @@ export default function StoryStudio({ stories, demo }: { stories: Story[]; demo:
       </header>
 
       <Notice icon={<Film className="h-3.5 w-3.5" />}>{copy.admin.videoPending}</Notice>
+
+      {demo && <PostedList posted={posted} />}
 
       <form onSubmit={generate} className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
         <label className="block text-xs font-medium text-slate-300">
@@ -133,6 +158,69 @@ export default function StoryStudio({ stories, demo }: { stories: Story[]; demo:
         </section>
       )}
     </div>
+  );
+}
+
+function PostedList({ posted }: { posted: PostedSummary[] }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState<string | null>(null);
+
+  async function takeDown(slug: string) {
+    setBusy(slug);
+    await fetch(`/api/admin/stories/post?slug=${encodeURIComponent(slug)}`, {
+      method: 'DELETE',
+    }).catch(() => null);
+    setBusy(null);
+    router.refresh();
+  }
+
+  return (
+    <section>
+      <h2 className="mb-3 text-sm font-semibold">{copy.admin.liveNow}</h2>
+
+      {posted.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-slate-800 px-4 py-6 text-center text-xs leading-relaxed text-slate-500">
+          {copy.admin.liveNowEmpty}
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {posted.map((story) => (
+            <li
+              key={story.slug}
+              className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">{story.title}</p>
+                <p className="mt-0.5 text-[11px] text-slate-400">
+                  {copy.admin.liveEpisodes(story.episodes)}
+                </p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <Link
+                  href={`/series/${story.slug}`}
+                  className="rounded-lg bg-slate-800 px-3 py-2 text-[11px] font-semibold text-slate-200"
+                >
+                  {copy.admin.openInApp}
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => takeDown(story.slug)}
+                  disabled={busy === story.slug}
+                  aria-label={copy.admin.takeDown}
+                  className="grid h-[34px] w-9 place-items-center rounded-lg bg-rose-500/15 text-rose-300 disabled:opacity-50"
+                >
+                  {busy === story.slug ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -221,6 +309,11 @@ function BreakdownView({ result, demo }: { result: Result; demo: boolean }) {
               {posting ? copy.admin.posting : copy.admin.post}
             </button>
             <p className="mt-2.5 text-[11px] leading-relaxed text-slate-400">{copy.admin.postHint}</p>
+            {demo && (
+              <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+                {copy.admin.demoOneStory}
+              </p>
+            )}
             {postError && <p className="mt-2 text-[11px] text-rose-300">{postError}</p>}
           </>
         )}
