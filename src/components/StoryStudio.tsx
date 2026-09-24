@@ -1,6 +1,7 @@
 'use client';
 
-import { AlertTriangle, Clapperboard, Film, Loader2, Sparkles, Upload } from 'lucide-react';
+import { AlertTriangle, Clapperboard, Film, Loader2, Send, Sparkles, Upload } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -136,7 +137,52 @@ export default function StoryStudio({ stories, demo }: { stories: Story[]; demo:
 }
 
 function BreakdownView({ result, demo }: { result: Result; demo: boolean }) {
+  const router = useRouter();
   const { breakdown, model } = result;
+
+  const [posting, setPosting] = useState(false);
+  const [posted, setPosted] = useState<{ slug: string; episodes: number } | null>(null);
+  const [postError, setPostError] = useState<string | null>(null);
+
+  async function post() {
+    setPosting(true);
+    setPostError(null);
+    try {
+      const res = await fetch(
+        demo ? '/api/admin/stories/post' : `/api/admin/stories/${result.storyId}/publish`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(
+            demo
+              ? {
+                  title: breakdown.title,
+                  logline: breakdown.logline,
+                  tags: breakdown.tags,
+                  scenes: breakdown.scenes,
+                }
+              : { force: true },
+          ),
+        },
+      );
+      const body = (await res.json()) as ApiResponse<{ slug?: string; episodes?: number }>;
+
+      if (!body.ok) {
+        setPostError(body.error.message);
+        return;
+      }
+
+      setPosted({
+        slug: body.data.slug ?? '',
+        episodes: body.data.episodes ?? breakdown.scenes.length,
+      });
+      router.refresh();
+    } catch {
+      setPostError(copy.errors.INTERNAL);
+    } finally {
+      setPosting(false);
+    }
+  }
 
   return (
     <section>
@@ -149,7 +195,36 @@ function BreakdownView({ result, demo }: { result: Result; demo: boolean }) {
       </div>
 
       {!model && <Notice icon={<AlertTriangle className="h-3.5 w-3.5" />}>{copy.admin.generatedLocally}</Notice>}
-      {demo && <Notice icon={<AlertTriangle className="h-3.5 w-3.5" />}>{copy.admin.demoNotPersisted}</Notice>}
+
+      <div className="mt-4 rounded-xl border border-sky-500/30 bg-sky-500/[0.07] p-4">
+        {posted ? (
+          <>
+            <p className="text-xs font-semibold text-sky-300">
+              {copy.admin.postedTo(posted.episodes)}
+            </p>
+            <Link
+              href={posted.slug ? `/series/${posted.slug}` : '/reels'}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-sky-500 px-3.5 py-2 text-[11px] font-semibold text-slate-950"
+            >
+              {copy.admin.viewInApp}
+            </Link>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={post}
+              disabled={posting}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-sky-500 py-3 text-sm font-semibold text-slate-950 transition-colors hover:bg-sky-400 disabled:opacity-50"
+            >
+              {posting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {posting ? copy.admin.posting : copy.admin.post}
+            </button>
+            <p className="mt-2.5 text-[11px] leading-relaxed text-slate-400">{copy.admin.postHint}</p>
+            {postError && <p className="mt-2 text-[11px] text-rose-300">{postError}</p>}
+          </>
+        )}
+      </div>
 
       <h3 className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
         {copy.admin.scenesHeading} ({breakdown.scenes.length})

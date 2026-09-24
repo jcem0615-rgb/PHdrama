@@ -38,11 +38,20 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     const viewer = await getViewer();
     if (!canWatch(episode, viewer)) return fail('LOCKED');
 
+    // A preview episode has no video of its own yet: play the bundled clip and
+    // let the player draw the episode's own title card over it.
     return ok<PlaybackTicket>({
-      src: demoStreamFor(id),
+      src: episode.isPreview ? DEMO_FALLBACK_CLIP : demoStreamFor(id),
       fallbackSrc: DEMO_FALLBACK_CLIP,
       watermarkCode: watermarkCode(),
       expiresAt,
+      previewCard: episode.isPreview
+        ? {
+            title: episode.title,
+            hook: episode.synopsis,
+            episodeNumber: episode.episodeNumber,
+          }
+        : null,
     });
   }
 
@@ -64,14 +73,31 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   if (!admin) return fail('INTERNAL');
 
   const { data: row } = await admin.from('episodes').select('hls_path').eq('id', id).maybeSingle();
-  if (!row?.hls_path) return fail('NOT_FOUND');
+  const code = watermarkCode();
+
+  // Published from the Studio but not rendered yet: serve the bundled preview
+  // clip with the episode's title card rather than a dead player. These
+  // episodes are free — see migration 0003.
+  if (!row?.hls_path) {
+    if (!episode.isPreview) return fail('NOT_FOUND');
+
+    return ok<PlaybackTicket>({
+      src: DEMO_FALLBACK_CLIP,
+      fallbackSrc: null,
+      watermarkCode: code,
+      expiresAt,
+      previewCard: {
+        title: episode.title,
+        hook: episode.synopsis,
+        episodeNumber: episode.episodeNumber,
+      },
+    });
+  }
 
   const { data: signed, error: signError } = await admin.storage
     .from('videos')
     .createSignedUrl(row.hls_path, TICKET_SECONDS);
   if (signError || !signed) return fail('INTERNAL');
-
-  const code = watermarkCode();
 
   if (userId) {
     await admin.from('viewer_sessions').insert({
@@ -88,5 +114,6 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     fallbackSrc: null,
     watermarkCode: code,
     expiresAt,
+    previewCard: null,
   });
 }

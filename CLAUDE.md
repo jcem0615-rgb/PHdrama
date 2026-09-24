@@ -40,6 +40,9 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
 - Mobile-first: design at 390×844, reels feed is `h-[100dvh]` snap-y.
 - Auth forms use `src/components/form/Field` (reveal toggle built in) and
   `Checkbox`, with `tone="customer"` or `tone="staff"`. Do not hand-roll inputs.
+- **Preview series are free, always.** A series published before its video
+  exists carries `is_preview` and every episode is free — `publish_story` sets
+  `coin_price = 0` and widens the free window. Never charge for a placeholder.
 
 ## Current state
 - ✅ Spec, architecture docs, build order
@@ -60,8 +63,11 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
   `admin_adjust_coins` / `admin_set_vip`, reason required, ledger written
 - 🟡 `/admin/studio` — premise → episode breakdown (Claude, `claude-opus-5`) →
   `stories` + `story_scenes` + queued `render_jobs` → `publish_story()`.
-  **No video provider is chosen**, so nothing drains the render queue and a
-  story with unrendered scenes publishes as a draft series
+  **Post to reels** ships it to customers now as a free `is_preview` series
+  (migration 0003): real scripts, placeholder clip, generated title card.
+  **No video provider is chosen**, so nothing drains the render queue
+- ✅ Generated poster art at `/api/posters/[episodeId]` (SVG title card from the
+  episode's own words; `?plain=1` for surfaces that draw their own heading)
 - ⬜ Phases 8–9: rewarded ads, DRM / Android wrapper
 - ⬜ No password reset or email-change flow yet
 - ⬜ No ElevenLabs narration; no scene review/edit pass before publishing

@@ -15,3 +15,11 @@ export function hueFromKey(key: string): number {
 export function posterGradient(hue: number): string {
   return `linear-gradient(155deg, hsl(${hue} 72% 42%) 0%, hsl(${(hue + 28) % 360} 64% 26%) 45%, hsl(${(hue + 300) % 360} 48% 10%) 100%)`;
 }
+
+/**
+ * Route that renders an episode's generated title-card poster.
+ * `plain` drops the lettering, for surfaces that draw their own title over it.
+ */
+export function posterUrl(episodeId: string, plain = false): string {
+  return `/api/posters/${encodeURIComponent(episodeId)}${plain ? '?plain=1' : ''}`;
+}

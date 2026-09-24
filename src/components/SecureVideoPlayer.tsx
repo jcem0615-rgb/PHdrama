@@ -4,7 +4,7 @@ import { Loader2, Play, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { copy } from '@/lib/copy';
-import { posterGradient } from '@/lib/poster';
+import { posterGradient, posterUrl } from '@/lib/poster';
 import type { ApiResponse, Episode, PlaybackTicket } from '@/lib/types';
 
 type Phase = 'idle' | 'loading' | 'error' | 'buffering' | 'playing' | 'paused';
@@ -188,6 +188,7 @@ export default function SecureVideoPlayer({ episode, active, unlocked, muted, on
         playsInline
         loop
         muted={muted}
+        poster={posterUrl(episode.id)}
         preload="none"
         onPlaying={() => setPlayback((p) => ({ key: streamKey, phase: 'playing', progress: p.progress }))}
         onPause={() => setPlayback((p) => ({ key: streamKey, phase: 'paused', progress: p.progress }))}
@@ -203,6 +204,27 @@ export default function SecureVideoPlayer({ episode, active, unlocked, muted, on
           }));
         }}
       />
+
+      {/* Preview episodes have no video of their own yet, so the reel carries
+          the episode's own words over the placeholder clip. */}
+      {session.ticket?.previewCard && (
+        <div className="pointer-events-none absolute inset-0 flex flex-col justify-end p-6 pb-[13.5rem]">
+          <span className="mb-3 w-fit rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold tracking-widest backdrop-blur">
+            PREVIEW
+          </span>
+          <p className="text-[11px] font-semibold tracking-[0.25em] text-white/60">
+            EPISODE {session.ticket.previewCard.episodeNumber}
+          </p>
+          <h2 className="mt-1.5 line-clamp-2 max-w-[16ch] text-3xl font-black leading-[1.1] drop-shadow-lg">
+            {session.ticket.previewCard.title}
+          </h2>
+          {session.ticket.previewCard.hook && (
+            <p className="mt-2.5 line-clamp-2 max-w-[30ch] text-sm italic leading-relaxed text-white/80 drop-shadow">
+              {session.ticket.previewCard.hook}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Session watermark — a random code, never an identifier. RA 10173. */}
       {session.ticket && (

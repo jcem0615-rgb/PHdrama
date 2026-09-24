@@ -132,6 +132,19 @@ a series whose episodes are its scenes.
 Set `ANTHROPIC_API_KEY` to get real scripts. Without it a local outliner runs
 instead so the pipeline is still clickable, but the scripts are placeholder text.
 
+**Post to reels** puts a story in front of customers immediately, as a free
+PREVIEW series: the scripts are real, and each episode plays a placeholder clip
+with its own generated title card over it. Preview episodes are free by
+construction — charging coins for a placeholder would be a lie — and the label
+is enforced in Postgres (`series.is_preview`), not just in the UI. Once every
+scene has a rendered video, publishing again clears the flag and restores the
+real free-episode window.
+
+Every episode also gets a generated poster at `/api/posters/[episodeId]` — an
+SVG title card drawn from the episode's own title and hook, so the catalogue has
+artwork with no image provider and no per-image cost. Add `?plain=1` for the
+text-free variant used behind headings.
+
 **The video itself is not built.** No text-to-video provider is chosen, so the
 render queue has nothing draining it — implement `VideoProvider` in
 `src/server/story/video.ts` and a worker that uploads to the private `videos`
@@ -139,8 +152,9 @@ bucket and fills `output_path`. Until then a story with unrendered scenes
 publishes as a **draft** series, so viewers never meet an episode with no video
 behind it.
 
-Demo mode has nowhere to persist, so the Studio generates and previews a
-breakdown but cannot save or publish it.
+Demo mode has nowhere to persist a full story, so posting keeps only what the
+feed needs (title, hook, duration) in its own cookie: up to 2 posted stories of
+12 episodes each. The scripts themselves are shown once and not stored.
 
 ## Commands
 

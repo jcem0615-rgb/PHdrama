@@ -5,14 +5,16 @@ import DemoBanner from '@/components/DemoBanner';
 import SeriesCard from '@/components/SeriesCard';
 import { copy } from '@/lib/copy';
 import { formatCount } from '@/lib/format';
-import { posterGradient } from '@/lib/poster';
+import { posterGradient, posterUrl } from '@/lib/poster';
 import { getViewer, isDemoMode, listSeries } from '@/server/repository';
 
 export default async function HomePage() {
   const [series, viewer] = await Promise.all([listSeries(), getViewer()]);
   const demo = isDemoMode();
 
-  const featured = series.find((s) => s.isFeatured) ?? series[0];
+  // A story just posted from the Studio leads the page — that is what the
+  // person who pressed Post expects to see.
+  const featured = series.find((s) => s.isPreview) ?? series.find((s) => s.isFeatured) ?? series[0];
   const trending = series.slice(0, 6);
   const newReleases = [...series].reverse().slice(0, 6);
 
@@ -23,11 +25,17 @@ export default async function HomePage() {
           <Link href={`/series/${featured.slug}`} className="block">
             <div className="relative aspect-[4/5] w-full overflow-hidden">
               <div className="absolute inset-0" style={{ background: posterGradient(featured.posterHue) }} />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={posterUrl(`${featured.slug}-01`, true)}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+              />
               <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/40 to-transparent" />
 
               <div className="absolute inset-x-0 bottom-0 p-5">
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-flame-400">
-                  {copy.home.featured}
+                  {featured.isPreview ? copy.series.preview : copy.home.featured}
                 </p>
                 <h1 className="text-2xl font-black leading-tight">{featured.title}</h1>
                 <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-white/70">

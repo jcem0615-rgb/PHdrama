@@ -18,6 +18,12 @@ export interface Series {
   viewCount: number;
   /** 0–360. Drives the generated poster gradient until real artwork is uploaded. */
   posterHue: number;
+  /**
+   * A series published from the Story Studio before its episodes have real
+   * rendered video. Preview episodes are free and labelled, because what plays
+   * behind them is a placeholder clip, not the story.
+   */
+  isPreview?: boolean;
 }
 
 export interface Episode {
@@ -32,6 +38,7 @@ export interface Episode {
   coinPrice: number;
   isFree: boolean;
   posterHue: number;
+  isPreview?: boolean;
 }
 
 export interface Viewer {
@@ -156,6 +163,12 @@ export interface PlaybackTicket {
   fallbackSrc: string | null;
   watermarkCode: string;
   expiresAt: string;
+  /**
+   * Set when the episode has no rendered video yet. The player draws this over
+   * the placeholder clip so the reel carries the episode's own words instead of
+   * looking like every other one.
+   */
+  previewCard: { title: string; hook: string; episodeNumber: number } | null;
 }
 
 export type ApiErrorCode =

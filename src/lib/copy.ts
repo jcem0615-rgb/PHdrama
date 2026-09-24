@@ -67,6 +67,9 @@ export const copy = {
     startFromOne: 'Start from Episode 1',
     locked: 'Locked',
     free: 'Free',
+    preview: 'PREVIEW',
+    previewNote:
+      'Posted from the Story Studio. These episodes are free and play a placeholder clip — the story is written, the video is not rendered yet.',
   },
 
   player: {
@@ -212,11 +215,17 @@ export const copy = {
     beat: 'Beat',
     hook: 'Hook',
     renderPending: 'No video yet',
-    publish: 'Publish as a series',
+    post: 'Post to reels',
+    posting: 'Posting…',
+    postHint:
+      'Posts it to the customer reels feed right away as a free PREVIEW — the scripts are real, the video behind each episode is a placeholder until a render provider is wired up.',
+    postedTo: (n: number) => `Posted. ${n} episodes are live in the reels feed now.`,
+    viewInApp: 'Open it in the customer app',
+    publish: 'Publish (needs rendered video)',
     publishing: 'Publishing…',
     published: 'Published',
     publishDraftNote:
-      'Published as a draft — the series stays hidden from viewers until every episode has a rendered video.',
+      'Published as a draft — the series stays hidden from viewers until every episode has a rendered video. Use Post to reels to make it visible now as a preview.',
     savedStories: 'Saved stories',
     noStories: 'Nothing written yet.',
     demoNotPersisted:

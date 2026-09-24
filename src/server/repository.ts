@@ -27,6 +27,7 @@ import type {
 } from '@/lib/types';
 
 import { demoLedger, demoPayments, demoViewer, readDemoState } from './demo-store';
+import { postedStoryToEpisodes, postedStoryToSeries, readPostedStories } from './demo-studio';
 
 /**
  * The app's reads, in one place, with two backends behind them.
@@ -52,6 +53,7 @@ type SeriesRow = {
   free_episode_count: number;
   is_featured: boolean;
   view_count: number;
+  is_preview: boolean | null;
   episodes: { count: number }[] | null;
 };
 
@@ -67,18 +69,24 @@ function mapSeries(row: SeriesRow): Series {
     episodeCount: row.episodes?.[0]?.count ?? 0,
     viewCount: row.view_count ?? 0,
     posterHue: hueFromKey(row.slug),
+    isPreview: row.is_preview ?? false,
   };
 }
 
 export async function listSeries(): Promise<Series[]> {
-  if (isDemoMode()) return DEMO_SERIES;
+  if (isDemoMode()) {
+    // Stories posted from the Studio lead the feed — that is the whole point of
+    // posting one.
+    const posted = await readPostedStories();
+    return [...posted.map(postedStoryToSeries), ...DEMO_SERIES];
+  }
 
   const supabase = await createServerSupabase();
   if (!supabase) return DEMO_SERIES;
 
   const { data } = await supabase
     .from('series')
-    .select('id, slug, title, synopsis, tags, free_episode_count, is_featured, view_count, episodes(count)')
+    .select('id, slug, title, synopsis, tags, free_episode_count, is_featured, view_count, is_preview, episodes(count)')
     .eq('status', 'published')
     .order('view_count', { ascending: false });
 
@@ -86,14 +94,18 @@ export async function listSeries(): Promise<Series[]> {
 }
 
 export async function getSeries(slug: string): Promise<Series | null> {
-  if (isDemoMode()) return demoSeries(slug) ?? null;
+  if (isDemoMode()) {
+    const posted = (await readPostedStories()).find((story) => story.slug === slug);
+    if (posted) return postedStoryToSeries(posted);
+    return demoSeries(slug) ?? null;
+  }
 
   const supabase = await createServerSupabase();
   if (!supabase) return demoSeries(slug) ?? null;
 
   const { data } = await supabase
     .from('series')
-    .select('id, slug, title, synopsis, tags, free_episode_count, is_featured, view_count, episodes(count)')
+    .select('id, slug, title, synopsis, tags, free_episode_count, is_featured, view_count, is_preview, episodes(count)')
     .eq('slug', slug)
     .maybeSingle();
 
@@ -108,7 +120,7 @@ type EpisodeRow = {
   synopsis: string;
   duration_seconds: number;
   coin_price: number;
-  series: { slug: string; title: string; free_episode_count: number } | null;
+  series: { slug: string; title: string; free_episode_count: number; is_preview: boolean | null } | null;
 };
 
 function mapEpisode(row: EpisodeRow): Episode {
@@ -125,14 +137,19 @@ function mapEpisode(row: EpisodeRow): Episode {
     coinPrice: row.coin_price,
     isFree: row.episode_number <= (row.series?.free_episode_count ?? 0),
     posterHue: (hueFromKey(slug) + row.episode_number * 7) % 360,
+    isPreview: row.series?.is_preview ?? false,
   };
 }
 
 const EPISODE_SELECT =
-  'id, series_id, episode_number, title, synopsis, duration_seconds, coin_price, series!inner(slug, title, free_episode_count)';
+  'id, series_id, episode_number, title, synopsis, duration_seconds, coin_price, series!inner(slug, title, free_episode_count, is_preview)';
 
 export async function listEpisodes(seriesSlug: string): Promise<Episode[]> {
-  if (isDemoMode()) return demoEpisodesOf(seriesSlug);
+  if (isDemoMode()) {
+    const posted = (await readPostedStories()).find((story) => story.slug === seriesSlug);
+    if (posted) return postedStoryToEpisodes(posted);
+    return demoEpisodesOf(seriesSlug);
+  }
 
   const supabase = await createServerSupabase();
   if (!supabase) return demoEpisodesOf(seriesSlug);
@@ -147,7 +164,13 @@ export async function listEpisodes(seriesSlug: string): Promise<Episode[]> {
 }
 
 export async function getEpisode(id: string): Promise<Episode | null> {
-  if (isDemoMode()) return demoEpisode(id) ?? null;
+  if (isDemoMode()) {
+    for (const story of await readPostedStories()) {
+      const hit = postedStoryToEpisodes(story).find((episode) => episode.id === id);
+      if (hit) return hit;
+    }
+    return demoEpisode(id) ?? null;
+  }
 
   const supabase = await createServerSupabase();
   if (!supabase) return demoEpisode(id) ?? null;

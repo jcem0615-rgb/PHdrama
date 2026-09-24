@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation';
 import EpisodeGrid from '@/components/EpisodeGrid';
 import { copy } from '@/lib/copy';
 import { formatCount } from '@/lib/format';
-import { posterGradient } from '@/lib/poster';
+import { posterGradient, posterUrl } from '@/lib/poster';
 import { getSeries, getViewer, listEpisodes } from '@/server/repository';
 
 export const dynamic = 'force-dynamic';
@@ -29,6 +29,12 @@ export default async function SeriesPage({ params }: PageProps<'/series/[slug]'>
     <main className="pb-28">
       <div className="relative aspect-[4/3] w-full overflow-hidden">
         <div className="absolute inset-0" style={{ background: posterGradient(series.posterHue) }} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={posterUrl(`${series.slug}-01`, true)}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/30 to-black/40" />
 
         <Link
@@ -45,8 +51,12 @@ export default async function SeriesPage({ params }: PageProps<'/series/[slug]'>
             <span>{copy.series.episodeCount(series.episodeCount)}</span>
             <span aria-hidden>·</span>
             <span>{formatCount(series.viewCount)} views</span>
-            <span className="rounded-full bg-jade-500/20 px-2 py-0.5 font-semibold text-jade-500">
-              {copy.home.freeBadge(series.freeEpisodeCount)}
+            <span
+              className={`rounded-full px-2 py-0.5 font-semibold ${
+                series.isPreview ? 'bg-white/20 text-white' : 'bg-jade-500/20 text-jade-500'
+              }`}
+            >
+              {series.isPreview ? copy.series.preview : copy.home.freeBadge(series.freeEpisodeCount)}
             </span>
           </p>
         </div>
@@ -54,6 +64,12 @@ export default async function SeriesPage({ params }: PageProps<'/series/[slug]'>
 
       <div className="mx-auto max-w-md px-4">
         <p className="mt-4 text-sm leading-relaxed text-ink-200">{series.synopsis}</p>
+
+        {series.isPreview && (
+          <p className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[11px] leading-relaxed text-ink-400">
+            {copy.series.previewNote}
+          </p>
+        )}
 
         <div className="mt-3 flex flex-wrap gap-2">
           {series.tags.map((tag) => (
