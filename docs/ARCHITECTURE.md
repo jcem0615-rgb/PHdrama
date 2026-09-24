@@ -30,6 +30,42 @@ decision Postgres already made.
 `src/server/*` carries `import 'server-only'` so an accidental client import is a
 build error rather than a leaked key.
 
+## Two portals
+
+The customer app and the staff portal are separate surfaces in one deployment.
+
+| | Customer app | Staff portal |
+| --- | --- | --- |
+| Routes | `/`, `/reels`, `/series`, `/watch`, `/coins`, `/pay`, `/me` | `/admin`, `/admin/login` |
+| Chrome | `AppChrome` — top bar with coin balance, bottom nav | `StaffShell` — slate palette, no customer nav |
+| Identity | `getViewer()` → `Viewer` (balance, VIP, unlocks) | `getStaff()` → `Staff` (id, name, role) |
+| Sign-in | none yet in live mode (see gaps) | `/admin/login` |
+| Indexed | yes | no — `robots.ts` disallows `/admin`, layout sets `noindex` |
+
+Two rules keep them apart:
+
+1. **`AppChrome` returns null on `/admin`.** The staff portal never renders a
+   coin balance or a customer nav, and the customer app has no link into
+   `/admin` anywhere — not a hidden one, not a role-gated one. A customer cannot
+   discover the portal by inspecting the page they were served.
+2. **`getStaff()` is the only gate.** `/admin` and `/api/admin/*` ask it and
+   nothing else. It is deliberately not `getViewer()` with a role check at the
+   call site: a `Staff` carries no balance to spend and a `Viewer` carries no
+   role to escalate, so the two answers cannot be confused for one another.
+
+`Staff` resolves differently per mode:
+
+- **live** — the Supabase session, then a `profiles.role` lookup. A customer who
+  signs in at `/admin/login` with valid credentials is signed straight back out
+  and told the account is not staff.
+- **demo** — a passcode sets `phd_staff`, a signed cookie separate from the
+  `phd_demo` viewer cookie. Signing into the portal does not change who the
+  customer app thinks you are; the demo viewer's role is always `user`.
+
+Both cookies live in the same browser on purpose, so one person can submit a
+payment as a customer and then approve it as staff and watch the balance move.
+In demo mode the queue only ever shows payments made in that same browser.
+
 ## Supabase clients
 
 | Module | Key | Used by |
@@ -37,6 +73,9 @@ build error rather than a leaked key.
 | `src/lib/supabase/client.ts` | anon | client components |
 | `src/lib/supabase/server.ts` | anon + cookies | server components, server actions |
 | `src/server/supabase-admin.ts` | **service role** | route handlers only |
+
+`src/server/staff.ts` sits on top of these and answers one question: is the
+caller staff?
 
 ## The data facade
 
@@ -113,6 +152,7 @@ any URL carrying a `token` query parameter — a cached signed URL is a leaked s
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | client + server | for live mode |
 | `SUPABASE_SERVICE_ROLE_KEY` | server only | for live mode |
 | `DEMO_SESSION_SECRET` | server only | demo mode cookie signing |
+| `DEMO_ADMIN_PASSCODE` | server only | demo mode staff portal (default `phdrama`) |
 | `NEXT_PUBLIC_FLAG_REWARDED_ADS` | client | off until an ad network is chosen |
 
 With none of them set the app boots in demo mode, which is what the Vercel preview runs.

@@ -11,6 +11,34 @@ BDO, BPI, UnionBank — with a receipt upload and SuperAdmin approval.
 - Build order — [`docs/BUILD_ORDER.md`](docs/BUILD_ORDER.md)
 - Working agreements for agents — [`CLAUDE.md`](CLAUDE.md)
 
+## Two portals
+
+| | Where | Who |
+| --- | --- | --- |
+| Customer app | `/` | Anyone. Never sees or links to the staff portal. |
+| Staff portal | `/admin` | Staff only, with its own sign-in and its own shell. |
+
+The customer app has no admin link anywhere — not even a hidden or role-gated
+one — and `AppChrome` renders no customer nav over `/admin`. `robots.ts` keeps
+the portal out of search results.
+
+Access is decided by `getStaff()` (`src/server/staff.ts`), the only gate on
+`/admin` and `/api/admin/*`. In live mode that is the Supabase session plus a
+`profiles.role` check; a customer who signs in with valid credentials is signed
+back out and told the account is not staff.
+
+To make someone staff in live mode, sign them up through the app and then run
+this from the Supabase SQL editor — `authenticated` has no UPDATE grant on
+`profiles.role`, so it cannot be done from the app:
+
+```sql
+update public.profiles
+   set role = 'superadmin'          -- or 'admin'
+ where id = (select id from auth.users where email = 'you@example.com');
+```
+
+`admin` reviews the payment queue; `superadmin` can also adjust coins and VIP.
+
 ## Demo mode
 
 **With no environment variables set the app boots in demo mode** and the whole
@@ -20,8 +48,14 @@ VIP expiry, unlocks, payment history) lives in one signed, httpOnly cookie, and
 only server code ever changes it — the same shape as the live path, minus the
 database.
 
-Demo mode hands the session SuperAdmin on purpose, so the payment queue can be
-exercised. It is labelled in the UI and the reset button clears the cookie.
+The demo customer is an ordinary `user`. To try the staff portal, go to
+`/admin` and sign in with the passcode **`phdrama`** (override it with
+`DEMO_ADMIN_PASSCODE`). That sets a second, separate cookie — signing in as
+staff does not change who the customer app thinks you are.
+
+The passcode is public here on purpose: demo data is per-browser and fake, so
+the queue only ever shows payments you made in that same browser. There is
+nothing to protect. Live mode ignores the passcode entirely.
 
 Playback in demo mode points at public HLS test streams so the real hls.js path
 gets exercised. If those hosts are unreachable the player falls back to

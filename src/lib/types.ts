@@ -44,6 +44,17 @@ export interface Viewer {
   unlockedEpisodeIds: string[];
 }
 
+/**
+ * A staff identity for the admin portal. Deliberately NOT a Viewer: it carries
+ * no balance, no VIP, no unlocks — there is nothing for the customer app to
+ * read off it, and nothing for the portal to spend.
+ */
+export interface Staff {
+  id: string;
+  displayName: string;
+  role: 'admin' | 'superadmin';
+}
+
 export interface CoinPackage {
   id: string;
   code: string;

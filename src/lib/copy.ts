@@ -12,7 +12,6 @@ export const copy = {
     reels: 'Reels',
     coins: 'Coins',
     me: 'Me',
-    admin: 'Admin',
   },
 
   home: {
@@ -111,7 +110,24 @@ export const copy = {
   },
 
   admin: {
-    title: 'SuperAdmin',
+    portalName: 'PH-Drama Staff',
+    title: 'Payments',
+    dashboard: 'Dashboard',
+    signIn: 'Staff sign in',
+    signInHint: 'This portal is for PH-Drama staff. Customer accounts cannot sign in here.',
+    email: 'Work email',
+    password: 'Password',
+    passcode: 'Demo passcode',
+    passcodeHint: 'Demo mode. The passcode is in the README; the queue below only ever shows payments made in this browser.',
+    signInAction: 'Sign in',
+    signingIn: 'Signing in…',
+    signOut: 'Sign out',
+    signedInAs: 'Signed in as',
+    badCredentials: 'Those details did not work.',
+    notStaff: 'That account is not a staff account.',
+    backToApp: 'Open the customer app',
+    activity: 'Coin activity',
+    revenue: 'Revenue',
     queue: 'Payment queue',
     pending: 'Pending',
     approved: 'Approved',
@@ -122,6 +138,7 @@ export const copy = {
     viewReceipt: 'View receipt',
     reference: 'Reference',
     emptyQueue: 'Nothing waiting for review.',
+    emptyActivity: 'No coin movements yet.',
     adjustCoins: 'Adjust coins',
     setVip: 'Set VIP',
     reasonRequired: 'A reason is required — it goes into the ledger.',
@@ -152,6 +169,5 @@ export const copy = {
     banner:
       'Demo mode — no Supabase connected. Coins, unlocks and payments are simulated in your browser so you can click through the whole app.',
     reset: 'Reset demo data',
-    adminHint: 'Demo mode gives you SuperAdmin so you can review the payment queue.',
   },
 } as const;

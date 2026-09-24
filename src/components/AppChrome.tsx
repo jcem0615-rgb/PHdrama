@@ -7,18 +7,26 @@ import TopBar from '@/components/TopBar';
 import type { Viewer } from '@/lib/types';
 
 /**
- * Decides which chrome a route gets. `/reels` and `/watch` are immersive: the
- * video owns the viewport, so the header steps out of the way.
+ * Chrome for the customer app.
+ *
+ * `/admin` gets none of it — the staff portal brings its own shell, so a
+ * customer's coin balance and nav never appear over it, and nothing in the
+ * customer chrome ever links into it.
+ *
+ * `/reels` and `/watch` are immersive: the video owns the viewport, so the
+ * header steps out of the way.
  */
 export default function AppChrome({ viewer, demo }: { viewer: Viewer | null; demo: boolean }) {
   const pathname = usePathname();
+
+  if (pathname.startsWith('/admin')) return null;
+
   const immersive = pathname.startsWith('/reels') || pathname.startsWith('/watch');
-  const isAdmin = viewer?.role === 'admin' || viewer?.role === 'superadmin';
 
   return (
     <>
       {!immersive && <TopBar viewer={viewer} demo={demo} />}
-      {!pathname.startsWith('/watch') && <BottomNav pathname={pathname} showAdmin={isAdmin} />}
+      {!pathname.startsWith('/watch') && <BottomNav pathname={pathname} />}
     </>
   );
 }

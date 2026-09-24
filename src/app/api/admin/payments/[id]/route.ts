@@ -3,7 +3,8 @@ import type { NextRequest } from 'next/server';
 import { codeFromPostgres, fail, ok } from '@/lib/api';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { demoApprove, demoReject, readDemoState, writeDemoState } from '@/server/demo-store';
-import { getViewer, isDemoMode } from '@/server/repository';
+import { isDemoMode } from '@/server/repository';
+import { getStaff } from '@/server/staff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,9 +13,9 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
 
-  const viewer = await getViewer();
-  if (!viewer) return fail('UNAUTHENTICATED');
-  if (viewer.role !== 'admin' && viewer.role !== 'superadmin') return fail('FORBIDDEN');
+  // Staff session only. A signed-in customer is not a staff member.
+  const staff = await getStaff();
+  if (!staff) return fail('FORBIDDEN');
 
   const body = (await req.json().catch(() => null)) as { action?: string; note?: string } | null;
   const action = body?.action;

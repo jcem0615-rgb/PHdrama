@@ -95,3 +95,18 @@ from public.series s
 cross join generate_series(1, 12) as n
 where s.slug = 'ang-sekreto-ng-mayordoma'
 on conflict (series_id, episode_number) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Making someone staff
+--
+-- `authenticated` has no UPDATE grant on profiles.role, so this cannot be done
+-- from the app — by design. Sign the person up through the app first, then run
+-- this from the SQL editor or with the service role:
+--
+--   update public.profiles
+--      set role = 'superadmin'          -- or 'admin'
+--    where id = (select id from auth.users where email = 'you@example.com');
+--
+-- `admin` reviews the payment queue. `superadmin` can also call
+-- admin_adjust_coins and admin_set_vip.
+-- ---------------------------------------------------------------------------

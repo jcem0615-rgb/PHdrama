@@ -28,6 +28,11 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
 8. Don't collect or display raw IP in the watermark. Use `viewer_sessions.watermark_code` (Data Privacy Act of 2012 / RA 10173).
 
 ## Conventions
+- **Two portals.** The customer app (`/`) and the staff portal (`/admin`) are
+  separate surfaces. Never add an admin link, tab or hint to customer UI, and
+  never render customer chrome on `/admin` — `AppChrome` bails out on that path.
+  Gate every admin route and handler with `getStaff()` (`src/server/staff.ts`),
+  never with `getViewer()` plus a role check at the call site.
 - Server Components by default; `'use client'` only for player, reels feed, modals, forms.
 - Supabase clients: `src/lib/supabase/server.ts` (cookies) and `src/lib/supabase/client.ts` (browser). Service-role client only in route handlers / server actions under `src/server/`, never imported by client code.
 - Route handlers return `{ ok: true, data } | { ok: false, error: { code, message } }`.
@@ -44,10 +49,14 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
   coin store and manual payments with receipt upload, SuperAdmin review queue
 - ✅ `src/server/repository.ts` — the data facade, with a demo backend so the app
   runs with no Supabase attached (see `docs/ARCHITECTURE.md`)
+- ✅ Staff portal split out of the customer app: own shell, own sign-in, own
+  session (`getStaff()`); the demo customer is a plain `user`
 - ⬜ Phases 8–10: rewarded ads, DRM / Android wrapper, AI content pipeline
+- ⬜ No customer-facing auth UI yet — live mode has sign-in only for staff
 
 **Demo mode:** with no Supabase env vars the app serves an in-memory catalogue and
-keeps viewer state in one signed httpOnly cookie. It is what the Vercel preview
+keeps viewer state in one signed httpOnly cookie, with the staff session on a
+second, separate cookie (passcode `DEMO_ADMIN_PASSCODE`, default `phdrama`). It is what the Vercel preview
 runs. Only server code mutates it, and it is labelled in the UI. Delete nothing
 from `src/lib/demo/` or `src/server/demo-store.ts` when wiring the live backend —
 they are the fallback that keeps previews clickable.

@@ -1,6 +1,5 @@
 import 'server-only';
 
-import crypto from 'node:crypto';
 import { cookies } from 'next/headers';
 
 import {
@@ -15,8 +14,11 @@ import type {
   Payment,
   PaymentKind,
   PaymentStatus,
+  Staff,
   Viewer,
 } from '@/lib/types';
+
+import { seal, unsign } from './signed-cookie';
 
 /**
  * Demo-mode viewer state.
@@ -30,6 +32,7 @@ import type {
  */
 
 const COOKIE = 'phd_demo';
+const STAFF_COOKIE = 'phd_staff';
 const VERSION = 1;
 const MAX_UNLOCKS = 120;
 const MAX_PAYMENTS = 10;
@@ -90,14 +93,6 @@ function unpackEpisodeId(packed: string): string | null {
   return `${slug}-${String(n).padStart(2, '0')}`;
 }
 
-function secret(): string {
-  return process.env.DEMO_SESSION_SECRET ?? 'ph-drama-demo-unsigned';
-}
-
-function sign(payload: string): string {
-  return crypto.createHmac('sha256', secret()).update(payload).digest('base64url').slice(0, 22);
-}
-
 function encode(state: DemoState): string {
   const wire: Wire = {
     v: VERSION,
@@ -109,19 +104,12 @@ function encode(state: DemoState): string {
       .map((p) => [p.id, p.kind, p.itemId, p.methodId, p.reference, p.status, p.createdAt, p.reviewedAt, p.receiptName, p.note]),
     l: state.ledger.slice(0, MAX_LEDGER).map((e) => [e.delta, e.balanceAfter, e.reason, e.at]),
   };
-  const payload = Buffer.from(JSON.stringify(wire)).toString('base64url');
-  return `${payload}.${sign(payload)}`;
+  return seal(Buffer.from(JSON.stringify(wire)).toString('base64url'));
 }
 
 function decode(raw: string | undefined): DemoState | null {
-  if (!raw) return null;
-  const dot = raw.lastIndexOf('.');
-  if (dot < 0) return null;
-  const payload = raw.slice(0, dot);
-  const mac = raw.slice(dot + 1);
-  const expected = sign(payload);
-  if (mac.length !== expected.length) return null;
-  if (!crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(expected))) return null;
+  const payload = unsign(raw);
+  if (!payload) return null;
 
   try {
     const wire = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as Wire;
@@ -190,9 +178,9 @@ export function demoViewer(state: DemoState): Viewer {
   return {
     id: 'demo-viewer',
     displayName: 'Demo Viewer',
-    // Demo mode hands out SuperAdmin on purpose: the payment queue is the most
-    // interesting thing to click through and there is no real money involved.
-    role: 'superadmin',
+    // A demo viewer is always an ordinary customer. Staff access is a separate
+    // session on a separate cookie — see the staff helpers at the bottom.
+    role: 'user',
     coinBalance: state.coins,
     vipExpiresAt: state.vipExpiresAt ? new Date(state.vipExpiresAt).toISOString() : null,
     isVip,
@@ -299,4 +287,43 @@ export function demoAddUnlock(state: DemoState, episodeId: string): void {
   if (state.unlocks.includes(episodeId)) return;
   state.unlocks.push(episodeId);
   state.unlocks = state.unlocks.slice(-MAX_UNLOCKS);
+}
+
+// ---------------------------------------------------------------------------
+// staff session (demo mode only)
+//
+// Deliberately a different cookie from the viewer state: signing into the staff
+// portal must not change who the customer app thinks you are, and the customer
+// app must never be able to see that a staff portal exists.
+// ---------------------------------------------------------------------------
+
+const DEMO_STAFF: Staff = {
+  id: 'demo-staff',
+  displayName: 'Demo SuperAdmin',
+  role: 'superadmin',
+};
+
+export function demoAdminPasscode(): string {
+  return process.env.DEMO_ADMIN_PASSCODE ?? 'phdrama';
+}
+
+export async function readDemoStaff(): Promise<Staff | null> {
+  const jar = await cookies();
+  return unsign(jar.get(STAFF_COOKIE)?.value) === 'superadmin' ? DEMO_STAFF : null;
+}
+
+export async function writeDemoStaff(): Promise<void> {
+  const jar = await cookies();
+  jar.set(STAFF_COOKIE, seal('superadmin'), {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: 60 * 60 * 8,
+  });
+}
+
+export async function clearDemoStaff(): Promise<void> {
+  const jar = await cookies();
+  jar.delete(STAFF_COOKIE);
 }
