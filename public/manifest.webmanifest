@@ -1,0 +1,23 @@
+{
+  "name": "PH-Drama — Short dramas, one thumb at a time",
+  "short_name": "PH-Drama",
+  "description": "Vertical short dramas for the Philippines. First five episodes free, then unlock with coins or go VIP.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#08080b",
+  "theme_color": "#08080b",
+  "lang": "en-PH",
+  "categories": ["entertainment", "video"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Reels", "url": "/reels" },
+    { "name": "Coins", "url": "/coins" }
+  ]
+}

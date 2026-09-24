@@ -1,0 +1,157 @@
+/**
+ * Every viewer-facing string lives here.
+ * English with Filipino-friendly phrasing; a Taglish variant is a swap of this
+ * one file, not a hunt through JSX.
+ */
+export const copy = {
+  appName: 'PH-Drama',
+  tagline: 'Short dramas, one thumb at a time.',
+
+  nav: {
+    home: 'Home',
+    reels: 'Reels',
+    coins: 'Coins',
+    me: 'Me',
+    admin: 'Admin',
+  },
+
+  home: {
+    featured: 'Featured now',
+    trending: 'Trending sa Pinas',
+    newReleases: 'Bagong labas',
+    continueWatching: 'Continue watching',
+    browseAll: 'All series',
+    freeBadge: (n: number) => `First ${n} episodes free`,
+    freeBadgeShort: (n: number) => `${n} free`,
+  },
+
+  series: {
+    episodes: 'Episodes',
+    episodeCount: (n: number) => `${n} episodes`,
+    watchFree: 'Watch free',
+    resume: 'Resume',
+    startFromOne: 'Start from Episode 1',
+    locked: 'Locked',
+    free: 'Free',
+  },
+
+  player: {
+    loading: 'Buffering…',
+    error: 'We could not start this episode. Check your connection and try again.',
+    retry: 'Try again',
+    nextEpisode: 'Next episode',
+    previousEpisode: 'Previous',
+    tapToUnmute: 'Tap for sound',
+    episodeLabel: (n: number) => `Episode ${n}`,
+  },
+
+  unlock: {
+    title: 'This episode is locked',
+    subtitle: 'Pick how you want to keep watching.',
+    withCoins: (price: number) => `Unlock for ${price} coins`,
+    withAd: 'Watch a short ad',
+    adDisabled: 'Rewarded ads are coming soon.',
+    goVip: 'Go VIP — all episodes, no ads',
+    balanceLeft: (n: number | string) => `${n} left`,
+    notEnough: 'Not enough coins. Top up to keep watching.',
+    topUp: 'Top up coins',
+    unlocking: 'Unlocking…',
+    unlocked: 'Unlocked. Enjoy!',
+    signInFirst: 'Sign in to unlock episodes.',
+  },
+
+  coins: {
+    title: 'Coins & VIP',
+    subtitle: 'Pay with GCash, Maya, QR Ph or bank transfer. We confirm within 24 hours.',
+    packages: 'Coin packages',
+    bonus: (n: number) => `+${n} bonus`,
+    popular: 'Most popular',
+    vipTitle: 'VIP access',
+    vipPerk1: 'Every episode of every series',
+    vipPerk2: 'No ads, ever',
+    vipPerk3: 'New episodes the moment they drop',
+    vipActive: 'VIP active',
+    buy: 'Buy',
+    subscribe: 'Subscribe',
+  },
+
+  pay: {
+    title: 'Complete your payment',
+    step1: 'Send the exact amount',
+    step2: 'Upload your receipt',
+    step3: 'Wait for confirmation',
+    amountDue: 'Amount due',
+    chooseMethod: 'Choose how you paid',
+    accountName: 'Account name',
+    accountNumber: 'Number / account',
+    referenceLabel: 'Reference number',
+    referencePlaceholder: 'e.g. 0123456789012',
+    referenceHelp: 'Copy this exactly from your receipt. Each reference can only be used once.',
+    receiptLabel: 'Receipt screenshot',
+    receiptHelp: 'JPG or PNG, up to 5 MB.',
+    submit: 'Submit for review',
+    submitting: 'Submitting…',
+    submitted: 'Received! We will confirm within 24 hours.',
+    duplicate: 'That reference number has already been submitted.',
+    missingFields: 'Add your reference number and receipt before submitting.',
+    copied: 'Copied',
+  },
+
+  me: {
+    title: 'My account',
+    balance: 'Coin balance',
+    vipStatus: 'VIP status',
+    notVip: 'Not a VIP yet',
+    unlocked: 'Unlocked episodes',
+    payments: 'Payment history',
+    ledger: 'Coin activity',
+    noPayments: 'No payments yet.',
+    noUnlocks: 'Nothing unlocked yet. Episodes 1–5 of every series are free.',
+    signOut: 'Sign out',
+  },
+
+  admin: {
+    title: 'SuperAdmin',
+    queue: 'Payment queue',
+    pending: 'Pending',
+    approved: 'Approved',
+    rejected: 'Rejected',
+    approve: 'Approve',
+    reject: 'Reject',
+    note: 'Note (optional)',
+    viewReceipt: 'View receipt',
+    reference: 'Reference',
+    emptyQueue: 'Nothing waiting for review.',
+    adjustCoins: 'Adjust coins',
+    setVip: 'Set VIP',
+    reasonRequired: 'A reason is required — it goes into the ledger.',
+  },
+
+  status: {
+    pending: 'Pending review',
+    approved: 'Approved',
+    rejected: 'Rejected',
+  },
+
+  errors: {
+    UNAUTHENTICATED: 'Sign in to continue.',
+    FORBIDDEN: 'You do not have access to that.',
+    LOCKED: 'This episode is locked.',
+    NOT_FOUND: 'We could not find that.',
+    INSUFFICIENT_COINS: 'Not enough coins. Top up to keep watching.',
+    DUPLICATE_REFERENCE: 'That reference number has already been submitted.',
+    RATE_LIMITED: 'Too many tries. Give it a few minutes.',
+    FEATURE_DISABLED: 'That is not switched on yet.',
+    INVALID_INPUT: 'Please check the details and try again.',
+    ALREADY_REVIEWED: 'That payment was already reviewed.',
+    INTERNAL: 'Something went wrong on our side. Please try again.',
+  },
+
+  demo: {
+    badge: 'DEMO',
+    banner:
+      'Demo mode — no Supabase connected. Coins, unlocks and payments are simulated in your browser so you can click through the whole app.',
+    reset: 'Reset demo data',
+    adminHint: 'Demo mode gives you SuperAdmin so you can review the payment queue.',
+  },
+} as const;

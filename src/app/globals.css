@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink-950: #08080b;
+  --color-ink-900: #0e0e13;
+  --color-ink-850: #14141b;
+  --color-ink-800: #1b1b24;
+  --color-ink-700: #272733;
+  --color-ink-600: #3a3a4a;
+  --color-ink-400: #7c7c90;
+  --color-ink-200: #c6c6d4;
+
+  --color-flame-500: #ff2d55;
+  --color-flame-400: #ff4d70;
+  --color-ember-500: #ff7a45;
+  --color-coin-500: #ffc53d;
+  --color-vip-500: #a855f7;
+  --color-jade-500: #27c498;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+
+  --radius-xl2: 1.25rem;
+}
+
+:root {
+  color-scheme: dark;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-ink-950);
+  color: #f4f4f7;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+/* The reels feed is the one place we want a hard snap and no visible scrollbar. */
+.snap-feed {
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.snap-feed::-webkit-scrollbar {
+  display: none;
+}
+.snap-item {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.text-gradient {
+  background: linear-gradient(95deg, var(--color-flame-400), var(--color-ember-500));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Session watermark. Low contrast on purpose: traceable, not distracting. */
+@keyframes watermark-drift {
+  0%   { transform: translate(6vw, 12vh); }
+  25%  { transform: translate(52vw, 30vh); }
+  50%  { transform: translate(18vw, 66vh); }
+  75%  { transform: translate(58vw, 48vh); }
+  100% { transform: translate(6vw, 12vh); }
+}
+.watermark {
+  animation: watermark-drift 47s linear infinite;
+  will-change: transform;
+}
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+  animation: shimmer 1.6s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .watermark,
+  .shimmer::after {
+    animation: none;
+  }
+}
