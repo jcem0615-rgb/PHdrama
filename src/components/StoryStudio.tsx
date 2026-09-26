@@ -140,7 +140,7 @@ export default function StoryStudio({
         </button>
       </form>
 
-      {result && <BreakdownView result={result} demo={demo} />}
+      {result && <BreakdownView result={result} demo={demo} live={posted} />}
 
       {!demo && (
         <section>
@@ -229,7 +229,15 @@ function PostedList({ posted }: { posted: PostedSummary[] }) {
   );
 }
 
-function BreakdownView({ result, demo }: { result: Result; demo: boolean }) {
+function BreakdownView({
+  result,
+  demo,
+  live,
+}: {
+  result: Result;
+  demo: boolean;
+  live: PostedSummary[];
+}) {
   const router = useRouter();
   const { breakdown, model } = result;
 
@@ -295,12 +303,22 @@ function BreakdownView({ result, demo }: { result: Result; demo: boolean }) {
             <p className="text-xs font-semibold text-sky-300">
               {copy.admin.postedTo(posted.episodes)}
             </p>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">
+              {copy.admin.nextRenderHint}
+            </p>
             <Link
               href={posted.slug ? `/series/${posted.slug}` : '/reels'}
               className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-sky-500 px-3.5 py-2 text-[11px] font-semibold text-slate-950"
             >
               {copy.admin.viewInApp}
             </Link>
+
+            {demo
+              ? (() => {
+                  const episodes = live.find((story) => story.slug === posted.slug)?.episodes;
+                  return episodes ? <ReelRenderer episodes={episodes} /> : null;
+                })()
+              : result.storyId && <ReelRenderer storyId={result.storyId} />}
           </>
         ) : (
           <>

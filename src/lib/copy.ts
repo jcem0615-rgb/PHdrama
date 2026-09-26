@@ -218,7 +218,9 @@ export const copy = {
     post: 'Post to reels',
     posting: 'Posting…',
     postHint:
-      'Posts it to the customer reels feed right away as a free PREVIEW — the scripts are real, the video behind each episode is a placeholder until a render provider is wired up.',
+      'Posts it to the customer reels feed right away as a free PREVIEW. Each episode plays an animated storyboard until you render it — the Render the videos button appears here once it is posted.',
+    nextRenderHint:
+      'They play an animated storyboard for now. Press Render the videos below to turn each episode into a real video file.',
     postedTo: (n: number) => `Posted. ${n} episodes are live in the reels feed now.`,
     viewInApp: 'Open it in the customer app',
     publish: 'Publish (needs rendered video)',
@@ -266,7 +268,7 @@ export const copy = {
     demoNotPersisted:
       'Demo mode has no database, so this breakdown is not saved and cannot be published. Connect Supabase to keep stories, queue renders and publish them as a series.',
     videoPending:
-      'Video rendering is not wired up: no provider is chosen yet, so every scene queues a render job and waits. See docs/BUILD_ORDER.md, Phase 10.',
+      'Rendering runs in this browser: canvas to WebM, with narration baked in. Post a story, then press Render the videos. No AI footage provider is chosen — these are motion graphics built from the script, not generated film.',
   },
 
   status: {
