@@ -39,6 +39,8 @@ is green (`npm run lint && npm run typecheck && npm run build`).
       WebM in the browser (canvas + MediaRecorder, 720×1560) and stores it —
       uploaded to the `videos` bucket in live mode, IndexedDB in demo mode. No
       key, no GPU, no per-second charge.
+      **Done:** ElevenLabs narration, mixed into the recording so the audio is
+      in the file and the reel's runtime follows the voice.
       **Not done:** AI-generated footage. There is no free text-to-video API —
       they all meter GPU time. Implement `VideoProvider` when one is chosen.
       A story with unrendered scenes publishes as a labelled free preview, so

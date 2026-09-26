@@ -283,9 +283,11 @@ export default function SecureVideoPlayer({ episode, active, unlocked, muted, on
             type="button"
             onClick={onToggleMute}
             aria-label={muted ? 'Unmute' : 'Mute'}
-            className="absolute right-3 top-3 z-20 grid h-10 w-10 place-items-center rounded-full bg-black/40 backdrop-blur"
+            className="absolute right-3 top-3 z-20 flex h-10 items-center gap-1.5 rounded-full bg-black/40 px-3 backdrop-blur"
           >
             {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+            {/* Reels autoplay muted, and narrated episodes have something to hear. */}
+            {muted && <span className="text-[11px] font-medium">{copy.player.tapToUnmute}</span>}
           </button>
         </>
       )}

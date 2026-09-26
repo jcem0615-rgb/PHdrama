@@ -240,6 +240,18 @@ export const copy = {
     renderHint:
       'Renders each episode to a real video file in this browser — canvas to WebM, no provider, no key, no per-second bill. It is motion graphics built from the script, not generated footage.',
     renderUnsupported: 'This browser cannot record video. Try Chrome or Edge.',
+
+    narration: 'Voice narration',
+    narrationOn: 'Narrate each episode',
+    narrationHint:
+      'ElevenLabs reads the episode title, the beat and the hook over the reel, and the audio is baked into the video file. Roughly 200 characters per episode, so a free ElevenLabs account covers about 50 a month.',
+    voice: 'Voice',
+    voiceNoKey:
+      'Narration needs an ElevenLabs API key. Add ELEVENLABS_API_KEY and reload — their free tier is enough for about 50 episodes a month.',
+    voiceRejected: 'ElevenLabs rejected that key or voice.',
+    voiceQuota: 'The ElevenLabs character quota is used up for this period.',
+    voiceFailed: 'The narration could not be generated. Try again.',
+    narrating: 'Narrating…',
     takingDown: 'Removing…',
     demoOneStory:
       'Demo mode keeps one posted story at a time (cookie-sized). Posting another replaces this one.',

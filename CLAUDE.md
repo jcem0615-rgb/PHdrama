@@ -75,7 +75,10 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
   episode's own words; `?plain=1` for surfaces that draw their own heading)
 - ⬜ Phases 8–9: rewarded ads, DRM / Android wrapper
 - ⬜ No password reset or email-change flow yet
-- ⬜ No ElevenLabs narration; no scene review/edit pass before publishing
+- ✅ ElevenLabs narration mixed into the rendered reel (`src/server/story/voice.ts`,
+  `/api/admin/narrate`); the key stays server-side and the reel's runtime follows
+  the audio. Silent, with an explanation, when `ELEVENLABS_API_KEY` is unset
+- ⬜ No scene review/edit pass before publishing
 
 **Demo mode:** with no Supabase env vars the app serves an in-memory catalogue and
 keeps viewer state in one signed httpOnly cookie, with the staff session on a

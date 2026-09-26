@@ -159,6 +159,20 @@ In live mode each render uploads to the private `videos` bucket and closes its
 series for real instead of as a preview. In demo mode the files go to this
 browser's IndexedDB and the player picks them up.
 
+### Voice narration
+
+Tick **Narrate each episode** before rendering and ElevenLabs reads the episode
+title, its beat and its cliffhanger over the reel. The audio is mixed into the
+same recording, so it is inside the video file rather than replayed alongside
+it, and the reel stretches to however long the voice needs instead of cutting
+the hook off mid-word.
+
+Set `ELEVENLABS_API_KEY` to switch it on; the Studio lists the voices your
+account can use. Narration is about 150 characters per episode, so the free tier
+(10,000 characters a month) covers roughly 65 episodes. Without the key reels
+render silently and the Studio says why — the key never reaches the browser,
+which asks this app for audio rather than ElevenLabs directly.
+
 **There is no free AI video generation API.** Every service that generates real
 footage meters it, because every one of them is renting a GPU — Google's Veo
 (the Gemini/YouTube one) is priced per second and needs a key, and the

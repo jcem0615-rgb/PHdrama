@@ -17,9 +17,18 @@ export interface FilmScene {
   hue: number;
 }
 
-/** Seconds per beat. Paced for reading on a phone, not for brevity. */
-export const BEAT_SECONDS = [5, 5, 5];
-export const FILM_SECONDS = BEAT_SECONDS.reduce((a, b) => a + b, 0);
+/**
+ * Relative weight of each beat. Silent reels run at FILM_SECONDS; a narrated
+ * one stretches to the length of its audio, keeping the same proportions so the
+ * words land with the picture.
+ */
+export const BEAT_WEIGHTS = [1, 1, 1];
+export const FILM_SECONDS = 15;
+const WEIGHT_TOTAL = BEAT_WEIGHTS.reduce((a, b) => a + b, 0);
+
+export function beatSeconds(totalSeconds: number): number[] {
+  return BEAT_WEIGHTS.map((weight) => (weight / WEIGHT_TOTAL) * totalSeconds);
+}
 export const FILM_WIDTH = 720;
 /**
  * 9:19.5, not 9:16. The player uses object-cover, so a 9:16 frame gets cropped
@@ -126,23 +135,29 @@ function drawBlock(
   ctx.globalAlpha = 1;
 }
 
-/** `t` is 0–1 across the whole reel. */
-export function drawFilmFrame(ctx: CanvasRenderingContext2D, scene: FilmScene, t: number): void {
+/** `t` is 0–1 across the whole reel, whatever its runtime. */
+export function drawFilmFrame(
+  ctx: CanvasRenderingContext2D,
+  scene: FilmScene,
+  t: number,
+  totalSeconds = FILM_SECONDS,
+): void {
   drawBackground(ctx, scene, t);
 
-  const elapsed = t * FILM_SECONDS;
+  const beats = beatSeconds(totalSeconds);
+  const elapsed = t * totalSeconds;
   let index = 0;
   let consumed = 0;
-  for (let i = 0; i < BEAT_SECONDS.length; i += 1) {
-    if (elapsed < consumed + BEAT_SECONDS[i]) {
+  for (let i = 0; i < beats.length; i += 1) {
+    if (elapsed < consumed + beats[i]) {
       index = i;
       break;
     }
-    consumed += BEAT_SECONDS[i];
+    consumed += beats[i];
     index = i;
   }
 
-  const local = Math.min(1, Math.max(0, (elapsed - consumed) / BEAT_SECONDS[index]));
+  const local = Math.min(1, Math.max(0, (elapsed - consumed) / beats[index]));
   const alpha = Math.max(0, Math.min(1, Math.min(local / 0.18, (1 - local) / 0.12, 1)));
   const lift = (1 - ease(Math.min(1, local / 0.4))) * 26;
 

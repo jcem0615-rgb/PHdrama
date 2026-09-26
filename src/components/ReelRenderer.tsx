@@ -1,9 +1,10 @@
 'use client';
 
-import { Clapperboard, Loader2 } from 'lucide-react';
+import { Clapperboard, Loader2, Mic } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 
+import Checkbox from '@/components/form/Checkbox';
 import { copy } from '@/lib/copy';
 import { putRenderedVideo } from '@/lib/demo/rendered-videos';
 import { canRecordReels, recordReel } from '@/lib/record-reel';
@@ -47,6 +48,54 @@ export default function ReelRenderer({
   );
 
   const [total, setTotal] = useState(episodes?.length ?? 0);
+  const [narrate, setNarrate] = useState(false);
+  const [voices, setVoices] = useState<{ id: string; name: string; description: string }[]>([]);
+  const [voiceId, setVoiceId] = useState('');
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const res = await fetch('/api/admin/narrate');
+        const body = (await res.json()) as ApiResponse<{
+          enabled: boolean;
+          voices: { id: string; name: string; description: string }[];
+          defaultVoiceId: string;
+        }>;
+        if (cancelled || !body.ok) return;
+
+        setVoiceEnabled(body.data.enabled);
+        setVoices(body.data.voices);
+        setVoiceId(body.data.voices[0]?.id ?? body.data.defaultVoiceId);
+      } catch {
+        if (!cancelled) setVoiceEnabled(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /** MP3 bytes for one scene, or null when narration is off or unavailable. */
+  async function narration(scene: FilmScene): Promise<ArrayBuffer | undefined> {
+    if (!narrate) return undefined;
+
+    const res = await fetch('/api/admin/narrate', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ scene, voiceId }),
+    });
+
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as ApiResponse<unknown> | null;
+      throw new Error(body && !body.ok ? body.error.message : copy.admin.voiceFailed);
+    }
+
+    return res.arrayBuffer();
+  }
 
   async function renderAll() {
     setBusy(true);
@@ -58,17 +107,19 @@ export default function ReelRenderer({
         setTotal(episodes.length);
         for (const [index, episode] of episodes.entries()) {
           setDone(index);
-          const blob = await recordReel(
-            {
-              episodeNumber: episode.episodeNumber,
-              seriesTitle: episode.seriesTitle,
-              title: episode.title,
-              beat: episode.beat ?? '',
-              hook: episode.synopsis,
-              hue: episode.posterHue,
-            },
-            setProgress,
-          );
+          const scene: FilmScene = {
+            episodeNumber: episode.episodeNumber,
+            seriesTitle: episode.seriesTitle,
+            title: episode.title,
+            beat: episode.beat ?? '',
+            hook: episode.synopsis,
+            hue: episode.posterHue,
+          };
+
+          const blob = await recordReel(scene, {
+            narration: await narration(scene),
+            onProgress: setProgress,
+          });
           await putRenderedVideo(episode.id, blob);
         }
         setDone(episodes.length);
@@ -85,7 +136,10 @@ export default function ReelRenderer({
 
         for (const [index, scene] of scenes.entries()) {
           setDone(index);
-          const blob = await recordReel(scene, setProgress);
+          const blob = await recordReel(scene, {
+            narration: await narration(scene),
+            onProgress: setProgress,
+          });
 
           const form = new FormData();
           form.set('sceneId', scene.sceneId);
@@ -105,8 +159,8 @@ export default function ReelRenderer({
       }
 
       router.refresh();
-    } catch {
-      setError(copy.errors.INTERNAL);
+    } catch (thrown) {
+      setError(thrown instanceof Error ? thrown.message : copy.errors.INTERNAL);
     } finally {
       setBusy(false);
       setProgress(0);
@@ -115,10 +169,47 @@ export default function ReelRenderer({
 
   return (
     <div className="mt-3 border-t border-slate-800 pt-3">
+      <div className="mb-3 space-y-2.5">
+        <Checkbox
+          tone="staff"
+          label={copy.admin.narrationOn}
+          hint={copy.admin.narrationHint}
+          checked={narrate}
+          onChange={setNarrate}
+        />
+
+        {narrate && voiceEnabled === false && (
+          <p className="rounded-lg bg-amber-500/10 px-3 py-2.5 text-[11px] leading-relaxed text-amber-300">
+            {copy.admin.voiceNoKey}
+          </p>
+        )}
+
+        {narrate && voiceEnabled && voices.length > 0 && (
+          <label className="block text-xs font-medium text-slate-300">
+            <span className="flex items-center gap-1.5">
+              <Mic className="h-3.5 w-3.5" />
+              {copy.admin.voice}
+            </span>
+            <select
+              value={voiceId}
+              onChange={(event) => setVoiceId(event.target.value)}
+              className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 outline-none focus:border-sky-500"
+            >
+              {voices.map((voice) => (
+                <option key={voice.id} value={voice.id}>
+                  {voice.name}
+                  {voice.description ? ` — ${voice.description}` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+
       <button
         type="button"
         onClick={renderAll}
-        disabled={busy || !supported}
+        disabled={busy || !supported || (narrate && voiceEnabled === false)}
         className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-100 py-2.5 text-xs font-semibold text-slate-900 transition-colors hover:bg-white disabled:opacity-50"
       >
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Clapperboard className="h-3.5 w-3.5" />}
