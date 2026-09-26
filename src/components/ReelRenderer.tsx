@@ -22,6 +22,15 @@ interface LiveScene extends FilmScene {
   sceneId: string;
 }
 
+interface Engine {
+  id: string;
+  label: string;
+  note: string;
+  available: boolean;
+  defaultVoiceId: string;
+  voices: { id: string; name: string; description: string }[];
+}
+
 /**
  * `episodes` renders locally into this browser (demo mode).
  * `storyId` fetches the story's scenes and uploads each render (live mode).
@@ -49,9 +58,9 @@ export default function ReelRenderer({
 
   const [total, setTotal] = useState(episodes?.length ?? 0);
   const [narrate, setNarrate] = useState(false);
-  const [voices, setVoices] = useState<{ id: string; name: string; description: string }[]>([]);
+  const [engines, setEngines] = useState<Engine[]>([]);
+  const [engineId, setEngineId] = useState('builtin');
   const [voiceId, setVoiceId] = useState('');
-  const [voiceEnabled, setVoiceEnabled] = useState<boolean | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,18 +68,18 @@ export default function ReelRenderer({
     void (async () => {
       try {
         const res = await fetch('/api/admin/narrate');
-        const body = (await res.json()) as ApiResponse<{
-          enabled: boolean;
-          voices: { id: string; name: string; description: string }[];
-          defaultVoiceId: string;
-        }>;
+        const body = (await res.json()) as ApiResponse<{ engines: Engine[] }>;
         if (cancelled || !body.ok) return;
 
-        setVoiceEnabled(body.data.enabled);
-        setVoices(body.data.voices);
-        setVoiceId(body.data.voices[0]?.id ?? body.data.defaultVoiceId);
+        setEngines(body.data.engines);
+        const first = body.data.engines.find((engine) => engine.available);
+        if (first) {
+          setEngineId(first.id);
+          setVoiceId(first.voices[0]?.id ?? first.defaultVoiceId);
+        }
       } catch {
-        if (!cancelled) setVoiceEnabled(false);
+        // Leaves the engine list empty; the toggle then renders without a picker
+        // and the built-in narrator is still what the server uses by default.
       }
     })();
 
@@ -79,6 +88,8 @@ export default function ReelRenderer({
     };
   }, []);
 
+  const engine = engines.find((candidate) => candidate.id === engineId);
+
   /** MP3 bytes for one scene, or null when narration is off or unavailable. */
   async function narration(scene: FilmScene): Promise<ArrayBuffer | undefined> {
     if (!narrate) return undefined;
@@ -86,7 +97,7 @@ export default function ReelRenderer({
     const res = await fetch('/api/admin/narrate', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ scene, voiceId }),
+      body: JSON.stringify({ scene, engine: engineId, voiceId }),
     });
 
     if (!res.ok) {
@@ -178,13 +189,41 @@ export default function ReelRenderer({
           onChange={setNarrate}
         />
 
-        {narrate && voiceEnabled === false && (
-          <p className="rounded-lg bg-amber-500/10 px-3 py-2.5 text-[11px] leading-relaxed text-amber-300">
-            {copy.admin.voiceNoKey}
-          </p>
+        {narrate && engines.length > 0 && (
+          <div className="grid grid-cols-2 gap-2">
+            {engines.map((candidate) => (
+              <button
+                key={candidate.id}
+                type="button"
+                disabled={!candidate.available}
+                onClick={() => {
+                  setEngineId(candidate.id);
+                  setVoiceId(candidate.voices[0]?.id ?? candidate.defaultVoiceId);
+                }}
+                className={`rounded-lg border px-3 py-2.5 text-left transition-colors disabled:opacity-45 ${
+                  candidate.id === engineId
+                    ? 'border-sky-500/60 bg-sky-500/10'
+                    : 'border-slate-700 bg-slate-900/60'
+                }`}
+              >
+                <span className="block text-[11px] font-semibold text-slate-100">
+                  {candidate.label}
+                  {!candidate.available && (
+                    <span className="ml-1 font-normal text-slate-500">
+                      ({copy.admin.engineUnavailable})
+                    </span>
+                  )}
+                </span>
+              </button>
+            ))}
+          </div>
         )}
 
-        {narrate && voiceEnabled && voices.length > 0 && (
+        {narrate && engine && (
+          <p className="text-[11px] leading-relaxed text-slate-500">{engine.note}</p>
+        )}
+
+        {narrate && engine && engine.available && engine.voices.length > 0 && (
           <label className="block text-xs font-medium text-slate-300">
             <span className="flex items-center gap-1.5">
               <Mic className="h-3.5 w-3.5" />
@@ -195,7 +234,7 @@ export default function ReelRenderer({
               onChange={(event) => setVoiceId(event.target.value)}
               className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 outline-none focus:border-sky-500"
             >
-              {voices.map((voice) => (
+              {engine.voices.map((voice) => (
                 <option key={voice.id} value={voice.id}>
                   {voice.name}
                   {voice.description ? ` — ${voice.description}` : ''}
@@ -209,7 +248,7 @@ export default function ReelRenderer({
       <button
         type="button"
         onClick={renderAll}
-        disabled={busy || !supported || (narrate && voiceEnabled === false)}
+        disabled={busy || !supported || (narrate && engine !== undefined && !engine.available)}
         className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-100 py-2.5 text-xs font-semibold text-slate-900 transition-colors hover:bg-white disabled:opacity-50"
       >
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Clapperboard className="h-3.5 w-3.5" />}

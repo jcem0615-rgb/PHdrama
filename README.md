@@ -161,17 +161,35 @@ browser's IndexedDB and the player picks them up.
 
 ### Voice narration
 
-Tick **Narrate each episode** before rendering and ElevenLabs reads the episode
+Tick **Narrate each episode** before rendering and a narrator reads the episode
 title, its beat and its cliffhanger over the reel. The audio is mixed into the
 same recording, so it is inside the video file rather than replayed alongside
 it, and the reel stretches to however long the voice needs instead of cutting
 the hook off mid-word.
 
-Set `ELEVENLABS_API_KEY` to switch it on; the Studio lists the voices your
-account can use. Narration is about 150 characters per episode, so the free tier
-(10,000 characters a month) covers roughly 65 episodes. Without the key reels
-render silently and the Studio says why — the key never reaches the browser,
-which asks this app for audio rather than ElevenLabs directly.
+Two narrators, and the Studio shows both:
+
+- **Built-in voice** — the default, and the one that needs nothing. espeak-ng
+  compiled to WebAssembly, running inside this app's own route handler: no
+  account, no key, no per-character charge, nothing to run out of. It is a
+  formant synthesiser, so it sounds synthetic rather than human — that is the
+  trade for owning the whole thing. Eight voices (US, British, RP, Scottish;
+  male and female), each checked to sound audibly different from the others.
+- **ElevenLabs** — the quality upgrade. Set `ELEVENLABS_API_KEY` and it appears
+  in the picker with the voices your account can use; without the key it is
+  shown greyed out and says why. About 150 characters per episode, so their
+  free tier (10,000 characters a month) covers roughly 65 episodes.
+
+Either way the browser asks *this app* for audio and never holds a key.
+
+A note for anyone touching `builtin-voice.ts`: the voice list is an allowlist,
+not a passthrough. An unknown voice code makes espeak-ng `abort()` the WASM
+runtime rather than throw, which would poison the whole function instance, so
+anything unrecognised falls back to the default. `text2wav` also has to stay in
+`serverExternalPackages` — bundling it rewrites `__dirname`, the runtime then
+looks for `espeak-ng.wasm` under `/ROOT`, and that abort is not catchable. And
+do not pass `amplitude`: at any value, including espeak's own default of 100, it
+returns a correctly sized but entirely silent WAV.
 
 **There is no free AI video generation API.** Every service that generates real
 footage meters it, because every one of them is renting a GPU — Google's Veo

@@ -9,7 +9,7 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
 - Supabase: Postgres, Auth, Storage (`receipts` private, `thumbnails` public), RLS on every table
 - Video: HLS (hls.js / native Safari). DRM (Shaka Player + a Widevine/FairPlay license provider) is a later phase — see CONTENT_PROTECTION.md
 - PWA: `@serwist/next` (or hand-written SW) — cache app shell + series metadata only, never video segments or signed URLs
-- AI pipeline (admin only): Anthropic / OpenAI for scripts, ElevenLabs TTS, video-gen APIs behind a job queue
+- AI pipeline (admin only): Anthropic for scripts, narration from a built-in espeak-ng WASM voice (`text2wav`) with ElevenLabs as the optional upgrade, video-gen APIs behind a job queue
 
 ## Commands (after Phase 0 scaffold)
 - `npm run dev` / `npm run build` / `npm run lint` / `npm run typecheck`
@@ -68,16 +68,22 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
   beats animated over the placeholder clip by `StoryboardReel`, on its own clock
   so they stay readable. Demo mode lists what is live with Open / Take down.
   **Render the videos** produces real WebM files locally (canvas + MediaRecorder,
-  `src/lib/reel-film.ts` + `record-reel.ts`) — free, no key, no GPU. Live mode
-  uploads them and closes the render job; demo mode keeps them in IndexedDB.
+  `src/lib/reel-film.ts` + `record-reel.ts`) — free, no key, no GPU, and with
+  built-in narration that is the same. Live mode uploads them and closes the
+  render job; demo mode keeps them in IndexedDB.
   **No AI video provider is chosen** — every one of them is metered
 - ✅ Generated poster art at `/api/posters/[episodeId]` (SVG title card from the
   episode's own words; `?plain=1` for surfaces that draw their own heading)
 - ⬜ Phases 8–9: rewarded ads, DRM / Android wrapper
 - ⬜ No password reset or email-change flow yet
-- ✅ ElevenLabs narration mixed into the rendered reel (`src/server/story/voice.ts`,
-  `/api/admin/narrate`); the key stays server-side and the reel's runtime follows
-  the audio. Silent, with an explanation, when `ELEVENLABS_API_KEY` is unset
+- ✅ Voice narration mixed into the rendered reel — audio inside the video file,
+  and the reel's runtime follows the voice. Two engines behind
+  `/api/admin/narrate`, and the browser never holds a key:
+  **built-in** (`src/server/story/builtin-voice.ts`) is the default and needs
+  nothing — espeak-ng as WASM (`text2wav`) inside the route handler, eight voices
+  each checked to sound different; **ElevenLabs** (`src/server/story/voice.ts`)
+  appears in the picker only when `ELEVENLABS_API_KEY` is set, greyed out with a
+  reason when it is not
 - ⬜ No scene review/edit pass before publishing
 
 **Demo mode:** with no Supabase env vars the app serves an in-memory catalogue and
@@ -102,3 +108,13 @@ they are the fallback that keeps previews clickable.
   (`local-canvas`). `activeVideoProvider()` returns null until an AI provider is
   picked; they differ on price, clip length, aspect ratio and commercial-use
   terms, and most are submit-then-poll rather than synchronous.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

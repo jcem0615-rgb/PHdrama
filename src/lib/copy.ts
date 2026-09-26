@@ -244,7 +244,15 @@ export const copy = {
     narration: 'Voice narration',
     narrationOn: 'Narrate each episode',
     narrationHint:
-      'ElevenLabs reads the episode title, the beat and the hook over the reel, and the audio is baked into the video file. Roughly 200 characters per episode, so a free ElevenLabs account covers about 50 a month.',
+      'The narrator reads the episode title, the beat and the hook over the reel, and the audio is baked into the video file.',
+    engine: 'Narrator',
+    engineBuiltin: 'Built-in voice',
+    engineBuiltinNote:
+      'Runs inside this app — no account, no key, no limit. Sounds synthetic rather than human.',
+    engineElevenLabs: 'ElevenLabs',
+    engineElevenLabsNote:
+      'Natural-sounding voices. About 150 characters per episode, so a free account covers roughly 65 a month.',
+    engineUnavailable: 'needs a key',
     voice: 'Voice',
     voiceNoKey:
       'Narration needs an ElevenLabs API key. Add ELEVENLABS_API_KEY and reload — their free tier is enough for about 50 episodes a month.',
