@@ -61,7 +61,7 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
   session cookie's lifetime, re-applied on every Supabase refresh)
 - ✅ `/admin/viewers` — SuperAdmin coin adjustments and VIP grant/revoke, through
   `admin_adjust_coins` / `admin_set_vip`, reason required, ledger written
-- 🟡 `/admin/studio` — premise → episode breakdown (Claude, `claude-opus-5`) →
+- 🟡 `/admin/studio` — premise → episode breakdown → 
   `stories` + `story_scenes` + queued `render_jobs` → `publish_story()`.
   **Post to reels** ships it to customers now as a free `is_preview` series
   (migration 0003). Preview episodes play a *storyboard reel* — the episode's
@@ -71,7 +71,15 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
   `src/lib/reel-film.ts` + `record-reel.ts`) — free, no key, no GPU, and with
   built-in narration that is the same. Live mode uploads them and closes the
   render job; demo mode keeps them in IndexedDB.
-  **No AI video provider is chosen** — every one of them is metered
+  **No AI video provider is chosen** — every one of them is metered.
+  The breakdown has two writers: **built-in**
+  (`src/server/story/builtin-writer.ts`) is the default and needs no key — it
+  reads the premise for a cast, then allocates episodes across a dramatic arc
+  (setup → inciting → escalation → midpoint → betrayal → crisis → climax) with
+  the hardest hook pinned to episode 5, since 1–5 are free. Deterministic per
+  premise, so a reload never rewrites a posted story. It recombines written
+  lines; it does not invent. **Claude** (`claude-opus-5`) writes instead when
+  `ANTHROPIC_API_KEY` is set, and is billed per token
 - ✅ Generated poster art at `/api/posters/[episodeId]` (SVG title card from the
   episode's own words; `?plain=1` for surfaces that draw their own heading)
 - ⬜ Phases 8–9: rewarded ads, DRM / Android wrapper

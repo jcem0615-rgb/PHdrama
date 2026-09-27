@@ -1,10 +1,10 @@
 'use client';
 
 import {
-  AlertTriangle,
   Clapperboard,
   Film,
   Loader2,
+  PenLine,
   Send,
   Sparkles,
   Trash2,
@@ -295,7 +295,7 @@ function BreakdownView({
         </p>
       </div>
 
-      {!model && <Notice icon={<AlertTriangle className="h-3.5 w-3.5" />}>{copy.admin.generatedLocally}</Notice>}
+      {!model && <Notice icon={<PenLine className="h-3.5 w-3.5" />}>{copy.admin.generatedBuiltin}</Notice>}
 
       <div className="mt-4 rounded-xl border border-sky-500/30 bg-sky-500/[0.07] p-4">
         {posted ? (

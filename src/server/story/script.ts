@@ -4,12 +4,15 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod';
 
+import { writeBreakdown } from '@/server/story/builtin-writer';
+
 /**
  * Turns a premise into a per-episode scene breakdown.
  *
- * With ANTHROPIC_API_KEY set this asks Claude. Without it, a deterministic
- * local outliner runs instead, so the Studio is demonstrable with no key and no
- * spend — the same demo/live split the rest of the app uses.
+ * Two writers. The built-in one (`builtin-writer.ts`) is the default and needs
+ * no key, no account and no spend. Claude writes instead when ANTHROPIC_API_KEY
+ * is set — it invents where the built-in engine can only recombine — and is
+ * metered per token, so it stays opt-in.
  */
 
 export const SceneSchema = z.object({
@@ -58,56 +61,12 @@ House rules:
 - "beat" is what happens, in one or two sentences. "script" is the actual
   dialogue and action for the episode. "hook" is the closing line.`;
 
-/** Deterministic fallback so the pipeline is testable with no key and no spend. */
-function localBreakdown({ premise, episodes, title }: ScriptRequest): Breakdown {
-  // Cut the first sentence at a word boundary rather than mid-word.
-  const firstSentence = premise.trim().split(/[.!?\n]/)[0] ?? '';
-  const derived =
-    title?.trim() ||
-    (firstSentence.length > 52
-      ? `${firstSentence.slice(0, 52).replace(/\s+\S*$/, '')}…`
-      : firstSentence) ||
-    'Untitled';
-
-  const ARCS = [
-    ['The arrival', 'Someone walks into a life that is not theirs yet.'],
-    ['The first lie', 'A small untruth buys another day and costs more than it saves.'],
-    ['The witness', 'Somebody saw. They have not decided what to do about it.'],
-    ['The debt', 'An old obligation comes due at the worst possible hour.'],
-    ['The proof', 'A document, a photo, a voice note — something that cannot be argued with.'],
-    ['The offer', 'Money is put on the table in exchange for silence.'],
-    ['The turn', 'An ally is revealed to have been playing a longer game.'],
-    ['The reckoning', 'Two people say out loud what everyone already knew.'],
-  ];
-
-  return {
-    title: derived,
-    logline: premise.trim().slice(0, 200),
-    tags: ['drama', 'revenge', 'family'],
-    scenes: Array.from({ length: episodes }, (_, i) => {
-      const n = i + 1;
-      const [arc, beat] = ARCS[i % ARCS.length];
-      return {
-        scene_number: n,
-        title: `${arc}${n > ARCS.length ? ` (${Math.ceil(n / ARCS.length)})` : ''}`,
-        beat,
-        script: `[Outline only — no ANTHROPIC_API_KEY is set, so this episode was not written by a model.]\n\nPremise: ${premise.trim()}\n\nEpisode ${n}: ${beat}`,
-        hook:
-          n === 5
-            ? 'And that is when she realises the person who hired her already knew her name.'
-            : 'Someone is standing in the doorway. They have been there the whole time.',
-        duration_seconds: 75 + ((n * 7) % 40),
-      };
-    }),
-  };
-}
-
 export async function generateBreakdown(request: ScriptRequest): Promise<{
   breakdown: Breakdown;
   model: string | null;
 }> {
   if (!hasScriptModel()) {
-    return { breakdown: localBreakdown(request), model: null };
+    return { breakdown: writeBreakdown(request), model: null };
   }
 
   const client = new Anthropic();

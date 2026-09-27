@@ -209,8 +209,8 @@ export const copy = {
     generate: 'Write the breakdown',
     generating: 'Writing…',
     generatedBy: (model: string) => `Written by ${model}`,
-    generatedLocally:
-      'Outline only — no ANTHROPIC_API_KEY is set, so this was generated locally, not by a model. Set the key to get real scripts.',
+    generatedBuiltin:
+      'Written by the built-in writer — no key, no account, no per-episode charge. It casts your premise and walks a dramatic arc, so the beats are real and in order, but it recombines written lines rather than inventing new ones. Set ANTHROPIC_API_KEY to have Claude write instead; that one is billed per use.',
     scenesHeading: 'Episodes',
     beat: 'Beat',
     hook: 'Hook',

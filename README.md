@@ -123,14 +123,33 @@ not reset it.
 
 ## Story Studio
 
-Write a premise, pick an episode count, and Claude returns a per-episode
-breakdown — beat, script, and the cliffhanger hook each episode ends on, with
-the hardest hook on episode 5 because that is the last free one. The story is
-saved with one queued render job per scene, and `publish_story()` turns it into
-a series whose episodes are its scenes.
+Write a premise, pick an episode count, and you get a per-episode breakdown —
+beat, script, and the cliffhanger hook each episode ends on, with the hardest
+hook on episode 5 because that is the last free one. The story is saved with one
+queued render job per scene, and `publish_story()` turns it into a series whose
+episodes are its scenes.
 
-Set `ANTHROPIC_API_KEY` to get real scripts. Without it a local outliner runs
-instead so the pipeline is still clickable, but the scripts are placeholder text.
+Two writers, and the Studio says which one wrote:
+
+- **The built-in writer** (`src/server/story/builtin-writer.ts`) — the default,
+  and the one that needs nothing. No key, no account, no per-episode charge. It
+  reads the premise for a lead, an opposite number, a place and a genre, casts
+  them with names, then allocates the episodes across a dramatic arc — setup,
+  inciting incident, escalation, midpoint reversal, betrayal, crisis, climax —
+  so a 4-part story and a 40-part story both get a whole shape instead of the
+  same beats on a loop. Episode 5 always draws from the paywall hooks.
+
+  It is a story engine, not a model: **it recombines written lines, it does not
+  invent them.** Two premises in the same genre will share phrasing. What makes
+  that survivable is the form — vertical short drama is written to a skeleton on
+  purpose, and the skeleton is the part a machine can hold.
+
+  Output is deterministic per premise and episode count, so reloading the Studio
+  never silently rewrites a story someone already posted.
+
+- **Claude** (`claude-opus-5`) — set `ANTHROPIC_API_KEY` and it writes instead.
+  It invents where the built-in engine can only recombine, and it is billed per
+  token, so it stays opt-in.
 
 **Post to reels** puts a story in front of customers immediately, as a free
 PREVIEW series: the scripts are real, and each episode plays a placeholder clip

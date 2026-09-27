@@ -32,9 +32,11 @@ is green (`npm run lint && npm run typecheck && npm run build`).
       perceptual-hash receipt dedupe, OCR on amounts and dates.
 - [~] **Phase 10 — AI pipeline.** Story Studio at `/admin/studio`.
       **Done:** premise → per-episode scene breakdown (beat, script, cliffhanger
-      hook) via Claude, persisted as `stories` + `story_scenes`, one queued
-      `render_jobs` row per scene, and `publish_story()` to turn a story into a
-      series whose episodes are its scenes.
+      hook), persisted as `stories` + `story_scenes`, one queued `render_jobs`
+      row per scene, and `publish_story()` to turn a story into a series whose
+      episodes are its scenes. Two writers: a built-in story engine that needs
+      no key (casts the premise, walks a dramatic arc, pins the hardest hook to
+      episode 5) and is the default, and Claude when `ANTHROPIC_API_KEY` is set.
       **Done:** a free local renderer. The Studio records each episode to a real
       WebM in the browser (canvas + MediaRecorder, 720×1560) and stores it —
       uploaded to the `videos` bucket in live mode, IndexedDB in demo mode. No
