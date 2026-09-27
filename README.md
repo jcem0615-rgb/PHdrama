@@ -183,9 +183,16 @@ What it draws is a **staged scene**, composed from the episode's own script
 - **A cast** — figures built on a skeleton: neck, shoulders, elbows, wrists,
   hips, knees, ankles, with limbs drawn as tapered strokes between them. Seven
   heads crown to ankle, shoulders a little over two head-widths, waist above the
-  midpoint. They breathe, shift their weight from one leg to the other, and are
-  lit with a fixed-width rim crescent on the side facing the key. Long hair,
-  folded arms and a raised arm are the poses that tell two of them apart.
+  midpoint. Lit with a fixed-width rim crescent on the side facing the key. In
+  close-up the head is a three-quarter profile with the brow, nose, lips and
+  chin carved into the outline — a face has to be in the silhouette, because
+  features painted inside one read as a mask.
+- **A performance.** Each beat picks an act from its own words — `grieve`,
+  `recoil`, `confront`, `plead`, `leave`, `guard`, `listen` — and plays it as
+  keyframes across the shot: a pause, a change, a settle. Grief drops the
+  shoulders and brings a hand to the face; a reveal flinches back and turns the
+  head away; a confrontation steps in, strides, and reaches. Idle breathing and
+  a weight shift run underneath the whole time.
 - **Three shots.** One per beat, with its own framing and its own camera move:
   a wide with a slow push in, an over-the-shoulder two-shot, a close-up that
   pushes in hard on the cliffhanger. Each cut opens on a dark frame.

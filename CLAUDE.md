@@ -73,7 +73,9 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
   script: a location picked from the text (street / room / corridor / church /
   field / office, with rain and night modifiers), parallax layers moved by a
   camera, figures built on a skeleton (neck/shoulders/elbows/wrists/hips/knees/ankles,
-  seven heads tall, weight shifting) and rim-lit, and one shot per
+  seven heads tall, a carved three-quarter profile in close-up) and rim-lit,
+  each playing a keyframed act chosen from the beat's own words (grieve /
+  recoil / confront / plead / leave / guard / listen), and one shot per
   beat (wide → over-the-shoulder → close) each with its own move. Procedural
   cinematography, not generated footage. Live mode uploads them and closes the
   render job; demo mode keeps them in IndexedDB.

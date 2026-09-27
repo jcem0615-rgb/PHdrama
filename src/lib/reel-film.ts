@@ -383,6 +383,124 @@ function drawFloor(ctx: CanvasRenderingContext2D, scene: FilmScene, staging: Sta
 // Figures
 // ---------------------------------------------------------------------------
 
+/**
+ * What the figure is doing across the shot.
+ *
+ * Idle breathing reads as a mannequin waiting. A performance has a shape: a
+ * pause, a change, and a settle. Every field is in head-radii or radians so it
+ * works at any shot size, and `stepX`/`lean` are signed toward the facing.
+ */
+interface Act {
+  headTurn: number;
+  headTilt: number;
+  lean: number;
+  stepX: number;
+  drop: number;
+  armRaise: number;
+  armReach: number;
+  fold: number;
+  shoulderDrop: number;
+}
+
+const REST: Act = {
+  headTurn: 0, headTilt: 0, lean: 0, stepX: 0, drop: 0,
+  armRaise: 0, armReach: 0, fold: 0, shoulderDrop: 0,
+};
+
+type ActKind = 'listen' | 'recoil' | 'grieve' | 'confront' | 'plead' | 'leave' | 'guard';
+
+/** Keyframes, in shot-local time. Held values between frames are eased. */
+const ACTS: Record<ActKind, readonly [number, Partial<Act>][]> = {
+  // Taking something in: small head turns, nothing dramatic.
+  listen: [
+    [0, {}],
+    [0.32, { headTurn: 0.45, headTilt: 0.03 }],
+    [0.66, { headTurn: -0.28 }],
+    [1, { headTurn: 0.1 }],
+  ],
+  // The flinch. Nothing, then all at once, then a shaky hold.
+  recoil: [
+    [0, {}],
+    [0.3, {}],
+    [0.42, { lean: -0.55, stepX: -0.38, headTurn: -1, armRaise: 0.55, drop: 0.05 }],
+    [0.62, { lean: -0.34, stepX: -0.3, headTurn: -0.78, armRaise: 0.42 }],
+    [1, { lean: -0.2, stepX: -0.24, headTurn: -0.5, armRaise: 0.24 }],
+  ],
+  // The body gives way before the face does.
+  grieve: [
+    [0, {}],
+    [0.34, { headTilt: 0.13, shoulderDrop: 0.32 }],
+    [0.62, { headTilt: 0.23, shoulderDrop: 0.72, armRaise: 0.76, drop: 0.13 }],
+    [1, { headTilt: 0.27, shoulderDrop: 0.88, armRaise: 0.8, drop: 0.17 }],
+  ],
+  // Closing the distance and putting it to them.
+  confront: [
+    [0, {}],
+    [0.26, { stepX: 0.24, lean: 0.24 }],
+    [0.5, { stepX: 0.42, lean: 0.42, armReach: 0.78, headTurn: 0.4 }],
+    [0.78, { stepX: 0.42, lean: 0.34, armReach: 0.5, headTurn: 0.3 }],
+    [1, { stepX: 0.4, lean: 0.3, armReach: 0.34, headTurn: 0.2 }],
+  ],
+  plead: [
+    [0, {}],
+    [0.3, { lean: 0.3, armReach: 0.6 }],
+    [0.56, { lean: 0.42, armReach: 0.86, headTilt: -0.09 }],
+    [1, { lean: 0.22, armReach: 0.5, headTilt: -0.04 }],
+  ],
+  // Turns, then goes. The walk-out is the whole point of the beat.
+  leave: [
+    [0, {}],
+    [0.44, { headTurn: -0.9 }],
+    [0.68, { headTurn: -1, stepX: -0.7 }],
+    [1, { headTurn: -1, stepX: -1.8 }],
+  ],
+  // Arms folded, holding a line.
+  guard: [
+    [0, { fold: 1 }],
+    [0.4, { fold: 1, headTurn: 0.3 }],
+    [0.75, { fold: 1, headTurn: -0.2, lean: -0.08 }],
+    [1, { fold: 1, headTurn: 0 }],
+  ],
+};
+
+function actAt(kind: ActKind, u: number): Act {
+  const frames = ACTS[kind];
+  let i = 0;
+  while (i < frames.length - 2 && u > frames[i + 1][0]) i += 1;
+
+  const [ta, a] = frames[i];
+  const [tb, b] = frames[Math.min(i + 1, frames.length - 1)];
+  const span = Math.max(1e-6, tb - ta);
+  const k = ease(Math.min(1, Math.max(0, (u - ta) / span)));
+
+  const out = { ...REST };
+  for (const key of Object.keys(REST) as (keyof Act)[]) {
+    out[key] = lerp(a[key] ?? REST[key], b[key] ?? REST[key], k);
+  }
+  return out;
+}
+
+/** What this episode's words say the beat is. */
+function actFor(scene: FilmScene, shot: ShotKind): ActKind {
+  const text = `${scene.title} ${scene.beat} ${scene.hook}`;
+
+  if (/funeral|coffin|died|dead|grief|crying|mourn|wake\b|buried (him|her|them|alive)/i.test(text)) {
+    return 'grieve';
+  }
+  if (/walks out|leaves|does not look back|ends it|reckoning|goodbye|turns away/i.test(text)) {
+    return shot === 'wide' ? 'listen' : 'leave';
+  }
+  if (/realise|realize|knows|behind|doorway|standing there|sees|saw|caught|threat|blood|scream|knife/i.test(text)) {
+    return shot === 'wide' ? 'listen' : 'recoil';
+  }
+  if (/out loud|in front of everyone|accus|demand|show them|ask him|confront|tells|says/i.test(text)) {
+    return shot === 'close' ? 'recoil' : 'confront';
+  }
+  if (/beg|please|help|save|money|offer|take it|choose/i.test(text)) return 'plead';
+
+  return shot === 'wide' ? 'listen' : 'guard';
+}
+
 interface FigureOptions {
   /** Centre line of the figure. */
   x: number;
@@ -398,19 +516,20 @@ interface FigureOptions {
   phase: number;
   /** Long hair is the fastest way to tell two silhouettes apart. */
   longHair?: boolean;
-  /** 0 arms down · 1 arms folded · 2 one arm raised. */
-  pose?: number;
+  /** What they are doing this shot. */
+  act: Act;
+  /** Big enough that a blank oval would read as a mask, so draw a face. */
+  face?: boolean;
 }
 
 /**
- * One figure, built on a skeleton.
+ * One figure, built on a skeleton and driven by a performance.
  *
  * A head on a trapezoid reads as a bowling pin, so this lays down actual
  * landmarks — neck, shoulders, elbows, wrists, hips, knees, ankles — and draws
  * limbs as tapered strokes between them. Proportions are the standard seven
  * heads crown to ankle, shoulders a little over two head-widths, waist above
- * the midpoint. Arms separated from the body and a weight shift onto one leg
- * are what stop it reading as a mannequin.
+ * the midpoint.
  *
  * Painted twice by the caller (offset in the rim colour, then in black), so
  * everything here has to be one flat colour.
@@ -418,7 +537,7 @@ interface FigureOptions {
 function paintFigure(ctx: CanvasRenderingContext2D, o: FigureOptions, color: string): void {
   const r = o.headR;
   const f = o.facing;
-  const pose = o.pose ?? 0;
+  const a = o.act;
 
   const cycle = (o.t + o.phase) * Math.PI * 2;
   const breathe = Math.sin(cycle * 1.5) * r * 0.022;
@@ -426,8 +545,9 @@ function paintFigure(ctx: CanvasRenderingContext2D, o: FigureOptions, color: str
   // Weight rocks slowly from one leg to the other.
   const weight = Math.sin(cycle * 0.45) * 0.35;
 
-  const cy = o.headCy + breathe;
-  const shoulderY = cy + r * 1.9;
+  const cy = o.headCy + breathe + a.drop * r;
+  const lean = a.lean * f * r;
+  const shoulderY = cy + r * 1.9 + a.shoulderDrop * r * 0.42;
   const waistY = cy + r * 4.6;
   const hipY = cy + r * 5.8;
   const kneeY = cy + r * 9.2;
@@ -438,7 +558,7 @@ function paintFigure(ctx: CanvasRenderingContext2D, o: FigureOptions, color: str
   const hh = r * 1.3;
 
   ctx.save();
-  ctx.translate(o.x + sway, 0);
+  ctx.translate(o.x + sway + a.stepX * f * r, 0);
   ctx.fillStyle = color;
   ctx.strokeStyle = color;
   ctx.lineJoin = 'round';
@@ -447,12 +567,12 @@ function paintFigure(ctx: CanvasRenderingContext2D, o: FigureOptions, color: str
   // --- legs, behind the torso -----------------------------------------------
   for (const side of [-1, 1]) {
     const bearing = side === Math.sign(weight || 1) ? 1 : 0.55;
-    const hipX = side * hh * 0.5;
+    const hipX = side * hh * 0.5 + lean * 0.35;
     // The free leg bends and sits closer in; the weighted one stays straight.
     const bend = (1 - bearing) * r * 0.5;
-    const kneeX = side * (hh * 0.42 - bend * 0.3) + weight * r * 0.12;
-    const ankleX = side * (r * 0.5 * bearing + 0.12 * r) + weight * r * 0.2;
-
+    const kneeX = side * (hh * 0.42 - bend * 0.3) + weight * r * 0.12 + a.stepX * f * side * r * 0.28;
+    const stride = a.stepX * f * side * r * 0.55;
+    const ankleX = side * (r * 0.5 * bearing + 0.12 * r) + weight * r * 0.2 + stride;
     const kneeYs = kneeY - bend * 0.35;
 
     ctx.lineWidth = r * 0.8;
@@ -463,7 +583,6 @@ function paintFigure(ctx: CanvasRenderingContext2D, o: FigureOptions, color: str
 
     ctx.lineWidth = r * 0.56;
     ctx.beginPath();
-    ctx.quadraticCurveTo(kneeX, kneeYs, kneeX, kneeYs);
     ctx.moveTo(kneeX, kneeYs);
     ctx.quadraticCurveTo(kneeX + (ankleX - kneeX) * 0.3, kneeYs + (ankleY - kneeYs) * 0.55, ankleX, ankleY);
     ctx.stroke();
@@ -474,32 +593,40 @@ function paintFigure(ctx: CanvasRenderingContext2D, o: FigureOptions, color: str
     ctx.fill();
   }
 
-  // --- arms ------------------------------------------------------------------
-  for (const side of [-1, 1]) {
-    const shoulderX = side * sh * 0.9;
-    let elbowX: number;
-    let elbowY: number;
-    let wristX: number;
-    let wristY: number;
+  // --- arms, behind the torso so the shoulder joins do not show -------------
+  const drawArm = (side: number, front: boolean) => {
+    const shoulderX = side * sh * 0.9 + lean;
 
-    if (pose === 1) {
-      // Folded: elbows out, forearms crossing the waist.
-      elbowX = side * sh * 1.06;
-      elbowY = waistY - r * 0.2;
-      wristX = -side * wh * 0.5;
-      wristY = waistY + r * 0.3;
-    } else if (pose === 2 && side === f) {
-      // One arm raised — holding something out, or warding someone off.
-      elbowX = side * sh * 1.1;
-      elbowY = waistY - r * 0.8;
-      wristX = side * sh * 1.5;
-      wristY = shoulderY + r * 0.4;
-    } else {
-      elbowX = side * (sh * 0.98 + Math.abs(weight) * r * 0.1);
-      elbowY = waistY + r * 0.1;
-      wristX = side * sh * 0.86;
-      wristY = hipY + r * 0.9;
+    // Rest, then blended toward whichever thing the performance is doing.
+    let elbowX = side * (sh * 0.98 + Math.abs(weight) * r * 0.1) + lean;
+    let elbowY = waistY + r * 0.1;
+    let wristX = side * sh * 0.86 + lean;
+    let wristY = hipY + r * 0.9;
+
+    if (a.fold > 0) {
+      elbowX = lerp(elbowX, side * sh * 1.06 + lean, a.fold);
+      elbowY = lerp(elbowY, waistY - r * 0.2, a.fold);
+      wristX = lerp(wristX, -side * wh * 0.5 + lean, a.fold);
+      wristY = lerp(wristY, waistY + r * 0.3, a.fold);
     }
+    if (a.armReach > 0) {
+      // The near arm leads; the far one follows at half.
+      const k = a.armReach * (side === f ? 1 : 0.45);
+      elbowX = lerp(elbowX, side * sh * 0.95 + f * r * 0.5 + lean, k);
+      elbowY = lerp(elbowY, waistY - r * 0.5, k);
+      wristX = lerp(wristX, f * sh * 1.55 + lean, k);
+      wristY = lerp(wristY, shoulderY + r * 0.75, k);
+    }
+    if (a.armRaise > 0) {
+      elbowX = lerp(elbowX, side * sh * 0.92 + lean, a.armRaise);
+      elbowY = lerp(elbowY, waistY - r * 0.45, a.armRaise);
+      wristX = lerp(wristX, side * r * 0.5 + lean * 1.2, a.armRaise);
+      wristY = lerp(wristY, cy + r * 1.15, a.armRaise);
+    }
+
+    // Forearms that cross the body have to come back over it.
+    const crosses = a.fold > 0.5 || a.armRaise > 0.5;
+    if (front !== crosses) return;
 
     ctx.lineWidth = r * 0.5;
     ctx.beginPath();
@@ -516,64 +643,94 @@ function paintFigure(ctx: CanvasRenderingContext2D, o: FigureOptions, color: str
     ctx.beginPath();
     ctx.arc(wristX, wristY, r * 0.21, 0, Math.PI * 2);
     ctx.fill();
-  }
+  };
+
+  for (const side of [-1, 1]) drawArm(side, false);
 
   // --- torso -----------------------------------------------------------------
   ctx.beginPath();
-  ctx.moveTo(-sh, shoulderY);
+  ctx.moveTo(-sh + lean, shoulderY);
   // Trapezius: shoulders slope up into the neck rather than meeting it square.
-  ctx.quadraticCurveTo(-r * 0.8, shoulderY - r * 0.62, 0, shoulderY - r * 0.72);
-  ctx.quadraticCurveTo(r * 0.8, shoulderY - r * 0.62, sh, shoulderY);
-  ctx.quadraticCurveTo(sh * 0.86, waistY - r * 0.9, wh, waistY);
+  ctx.quadraticCurveTo(-r * 0.8 + lean, shoulderY - r * 0.62, lean, shoulderY - r * 0.72);
+  ctx.quadraticCurveTo(r * 0.8 + lean, shoulderY - r * 0.62, sh + lean, shoulderY);
+  ctx.quadraticCurveTo(sh * 0.86 + lean, waistY - r * 0.9, wh + lean * 0.4, waistY);
   ctx.quadraticCurveTo(hh * 0.98, hipY - r * 0.4, hh, hipY + r * 0.25);
   ctx.lineTo(-hh, hipY + r * 0.25);
-  ctx.quadraticCurveTo(-hh * 0.98, hipY - r * 0.4, -wh, waistY);
-  ctx.quadraticCurveTo(-sh * 0.86, waistY - r * 0.9, -sh, shoulderY);
+  ctx.quadraticCurveTo(-hh * 0.98, hipY - r * 0.4, -wh + lean * 0.4, waistY);
+  ctx.quadraticCurveTo(-sh * 0.86 + lean, waistY - r * 0.9, -sh + lean, shoulderY);
   ctx.closePath();
   ctx.fill();
 
-  // Folded forearms cross in front of the body, so they come back over it.
-  if (pose === 1) {
-    for (const side of [-1, 1]) {
-      ctx.lineWidth = r * 0.4;
-      ctx.beginPath();
-      ctx.moveTo(side * sh * 1.06, waistY - r * 0.2);
-      ctx.lineTo(-side * wh * 0.5, waistY + r * 0.3);
-      ctx.stroke();
-    }
-  }
+  for (const side of [-1, 1]) drawArm(side, true);
 
   // --- neck ------------------------------------------------------------------
   ctx.lineWidth = r * 0.54;
   ctx.beginPath();
-  ctx.moveTo(f * r * 0.06, cy + r * 0.72);
-  ctx.lineTo(0, shoulderY - r * 0.5);
+  ctx.moveTo(f * r * 0.06 + lean * 1.25, cy + r * 0.72);
+  ctx.lineTo(lean, shoulderY - r * 0.5);
   ctx.stroke();
 
   // --- head ------------------------------------------------------------------
-  const tilt = f * 0.06 + Math.sin(cycle * 0.5) * 0.02;
+  const tilt = f * 0.06 + a.headTilt + Math.sin(cycle * 0.5) * 0.02;
+  const turn = a.headTurn;
+
   ctx.save();
-  ctx.translate(f * r * 0.08, cy);
+  ctx.translate(f * r * 0.08 + lean * 1.3, cy);
   ctx.rotate(tilt);
 
   if (o.longHair) {
-    // Hair falls past the shoulders and is the whole silhouette difference.
     // The crown sits just proud of the skull and the mass falls from the jaw
     // down. Any taller and it reads as a hood rather than hair.
     ctx.beginPath();
-    ctx.moveTo(-r * 0.94, -r * 0.05);
-    ctx.quadraticCurveTo(-r * 1.2, r * 1.9, -r * 0.66, r * 2.6);
-    ctx.lineTo(r * 0.66, r * 2.6);
-    ctx.quadraticCurveTo(r * 1.2, r * 1.9, r * 0.94, -r * 0.05);
-    ctx.quadraticCurveTo(r * 0.86, -r * 1.14, 0, -r * 1.14);
-    ctx.quadraticCurveTo(-r * 0.86, -r * 1.14, -r * 0.94, -r * 0.05);
+    const back = o.face ? -f : -1;
+    ctx.moveTo(back * r * 0.94, -r * 0.05);
+    ctx.quadraticCurveTo(back * r * 1.24, r * 1.9, back * r * 0.62, r * 2.6);
+    ctx.lineTo(-back * r * 0.34, r * 2.4);
+    // Stops at the temple. Any further forward and it covers the profile the
+    // face is made of.
+    ctx.quadraticCurveTo(-back * r * 0.72, r * 0.9, -back * r * 0.5, -r * 0.5);
+    ctx.quadraticCurveTo(-back * r * 0.4, -r * 1.12, 0, -r * 1.16);
+    ctx.quadraticCurveTo(back * r * 0.86, -r * 1.16, back * r * 0.94, -r * 0.05);
     ctx.closePath();
     ctx.fill();
   }
 
-  ctx.beginPath();
-  ctx.ellipse(0, 0, r * 0.8, r, 0, 0, Math.PI * 2);
-  ctx.fill();
+  if (o.face) {
+    // A three-quarter profile, carved into the outline. `p` swings the features
+    // out as the head turns toward camera and flattens them as it turns away.
+    const p = f * (0.94 + turn * 0.16);
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 1.02);
+    ctx.quadraticCurveTo(r * p * 0.62, -r * 0.98, r * p * 0.74, -r * 0.58);
+    ctx.quadraticCurveTo(r * p * 0.86, -r * 0.34, r * p * 0.82, -r * 0.16);
+    // Brow ridge dips to the bridge of the nose, then out to the tip.
+    ctx.quadraticCurveTo(r * p * 0.7, -r * 0.08, r * p * 0.94, r * 0.04);
+    ctx.lineTo(r * p * 1.16, r * 0.22);
+    ctx.lineTo(r * p * 0.78, r * 0.28);
+    // Upper lip, mouth line, lower lip.
+    ctx.quadraticCurveTo(r * p * 0.9, r * 0.33, r * p * 0.84, r * 0.4);
+    ctx.quadraticCurveTo(r * p * 0.74, r * 0.44, r * p * 0.86, r * 0.52);
+    // Chin, then the jaw running back under the ear.
+    ctx.quadraticCurveTo(r * p * 0.82, r * 0.74, r * p * 0.56, r * 0.88);
+    ctx.quadraticCurveTo(r * p * 0.2, r * 1.0, -r * p * 0.42, r * 0.78);
+    ctx.quadraticCurveTo(-r * 0.84, r * 0.38, -r * 0.82, -r * 0.18);
+    ctx.quadraticCurveTo(-r * 0.78, -r * 0.86, 0, -r * 1.02);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * 0.8, r, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Two pixels of profile fix which way they look at small sizes.
+    const px = f * (0.72 + turn * 0.14);
+    ctx.beginPath();
+    ctx.moveTo(r * px * 1.02, -r * 0.2);
+    ctx.lineTo(r * px * 1.3, r * 0.14);
+    ctx.lineTo(r * px * 0.94, r * 0.3);
+    ctx.closePath();
+    ctx.fill();
+  }
 
   if (!o.longHair) {
     // A cropped cap sitting slightly proud of the skull.
@@ -581,14 +738,6 @@ function paintFigure(ctx: CanvasRenderingContext2D, o: FigureOptions, color: str
     ctx.ellipse(0, -r * 0.16, r * 0.87, r * 0.88, 0, Math.PI, Math.PI * 2);
     ctx.fill();
   }
-
-  // The nose is two pixels of profile, and it is what fixes which way they look.
-  ctx.beginPath();
-  ctx.moveTo(f * r * 0.74, -r * 0.06);
-  ctx.lineTo(f * r * 0.96, r * 0.12);
-  ctx.lineTo(f * r * 0.72, r * 0.2);
-  ctx.closePath();
-  ctx.fill();
 
   ctx.restore();
   ctx.restore();
@@ -611,6 +760,7 @@ function drawFigure(ctx: CanvasRenderingContext2D, o: FigureOptions): void {
     paintFigure(ctx, o, `hsla(${o.rimHue}, 82%, 66%, ${o.rim})`);
     ctx.restore();
   }
+
   paintFigure(ctx, o, 'rgba(3,4,10,0.98)');
 }
 
@@ -622,19 +772,20 @@ function drawCast(
   local: number,
 ): void {
   const rimHue = (scene.hue + 40) % 360;
+  const act = actAt(actFor(scene, shot), local);
+  // The second figure is reacting to the first, half a beat behind.
+  const react = actAt(shot === 'wide' ? 'guard' : 'listen', local);
 
   if (shot === 'wide') {
-    // Two people standing on the ground plane, right of centre so the title has
-    // the left of the frame. Ankles land on the horizon line.
     const r = 23;
     drawFigure(ctx, {
       x: FILM_WIDTH * 0.53, headCy: HORIZON + 40 - r * 13, headR: r,
-      facing: 1, rimHue, rim: 0.52, t: local, phase: 0, longHair: true, pose: 0,
+      facing: 1, rimHue, rim: 0.52, t: local, phase: 0, longHair: true, act,
     });
     const r2 = 21;
     drawFigure(ctx, {
       x: FILM_WIDTH * 0.73, headCy: HORIZON + 26 - r2 * 13, headR: r2,
-      facing: -1, rimHue, rim: 0.32, t: local, phase: 0.4, pose: 1,
+      facing: -1, rimHue, rim: 0.32, t: local, phase: 0.4, act: react,
     });
     return;
   }
@@ -644,22 +795,21 @@ function drawCast(
     // the one we are watching stands clear of them, mid-frame.
     drawFigure(ctx, {
       x: FILM_WIDTH * 0.6, headCy: FILM_HEIGHT * 0.26, headR: 52,
-      facing: -1, rimHue, rim: 0.6, t: local, phase: 0, longHair: true, pose: 2,
+      facing: -1, rimHue, rim: 0.6, t: local, phase: 0, longHair: true, act,
     });
     drawFigure(ctx, {
       x: -FILM_WIDTH * 0.06, headCy: FILM_HEIGHT * 0.56, headR: 120,
-      facing: 1, rimHue, rim: 0.2, t: local, phase: 0.55, pose: 0,
+      facing: 1, rimHue, rim: 0.2, t: local, phase: 0.55, act: react,
     });
     return;
   }
 
-  // Close: head and shoulders, off-centre, lit down one edge. The body runs off
-  // the bottom of the frame, which is what a close-up does.
+  // Close: head and shoulders, off-centre, lit down one edge, with a face.
   drawFigure(ctx, {
     // Sized against the close-up's own zoom (~1.5–1.9x): the head should read
     // as about a third of the frame, not fill it.
     x: FILM_WIDTH * 0.54, headCy: FILM_HEIGHT * 0.4, headR: 124,
-    facing: -1, rimHue, rim: 0.7, t: local, phase: 0, longHair: true, pose: 0,
+    facing: -1, rimHue, rim: 0.7, t: local, phase: 0, longHair: true, act, face: true,
   });
 }
 
