@@ -72,7 +72,8 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
   built-in narration that is the same. `reel-film.ts` stages a scene from the
   script: a location picked from the text (street / room / corridor / church /
   field / office, with rain and night modifiers), parallax layers moved by a
-  camera, silhouettes proportioned off head size and rim-lit, and one shot per
+  camera, figures built on a skeleton (neck/shoulders/elbows/wrists/hips/knees/ankles,
+  seven heads tall, weight shifting) and rim-lit, and one shot per
   beat (wide → over-the-shoulder → close) each with its own move. Procedural
   cinematography, not generated footage. Live mode uploads them and closes the
   render job; demo mode keeps them in IndexedDB.

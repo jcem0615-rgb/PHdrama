@@ -180,9 +180,12 @@ What it draws is a **staged scene**, composed from the episode's own script
 - **Depth.** Sky, midground, floor, cast and air are drawn as separate layers
   and moved by the camera at different rates. That parallax is what makes the
   frame read as space rather than a picture.
-- **A cast** — silhouettes proportioned off head size (so they hold up wide
-  *and* in close-up), lit with a rim crescent on the side facing the key light,
-  breathing and swaying slightly.
+- **A cast** — figures built on a skeleton: neck, shoulders, elbows, wrists,
+  hips, knees, ankles, with limbs drawn as tapered strokes between them. Seven
+  heads crown to ankle, shoulders a little over two head-widths, waist above the
+  midpoint. They breathe, shift their weight from one leg to the other, and are
+  lit with a fixed-width rim crescent on the side facing the key. Long hair,
+  folded arms and a raised arm are the poses that tell two of them apart.
 - **Three shots.** One per beat, with its own framing and its own camera move:
   a wide with a slow push in, an over-the-shoulder two-shot, a close-up that
   pushes in hard on the cliffhanger. Each cut opens on a dark frame.
