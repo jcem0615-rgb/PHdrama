@@ -61,7 +61,7 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
   session cookie's lifetime, re-applied on every Supabase refresh)
 - ✅ `/admin/viewers` — SuperAdmin coin adjustments and VIP grant/revoke, through
   `admin_adjust_coins` / `admin_set_vip`, reason required, ledger written
-- 🟡 `/admin/studio` — premise → episode breakdown → 
+- 🟡 `/admin/studio` — premise → episode breakdown →
   `stories` + `story_scenes` + queued `render_jobs` → `publish_story()`.
   **Post to reels** ships it to customers now as a free `is_preview` series
   (migration 0003). Preview episodes play a *storyboard reel* — the episode's
