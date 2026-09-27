@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import type { NextRequest } from 'next/server';
 
 import { fail, ok } from '@/lib/api';
@@ -50,7 +50,16 @@ export async function POST(req: NextRequest) {
   }
 
   const story: DemoPostedStory = {
-    slug: slugForStory(title, randomBytes(3).toString('hex')),
+    // Derived from the story, never random. A random suffix gave every post a
+    // new slug, so re-posting the same story changed every episode id and
+    // orphaned the videos already rendered against the old ones — they simply
+    // stopped appearing. Same story in, same slug out.
+    slug: slugForStory(
+      title,
+      createHash('sha256')
+        .update(`${title}|${body?.logline?.trim() ?? ''}|${scenes.length}`)
+        .digest('hex'),
+    ),
     title,
     logline: body?.logline?.trim() ?? '',
     tags: Array.isArray(body?.tags) ? body.tags.slice(0, 3) : [],
