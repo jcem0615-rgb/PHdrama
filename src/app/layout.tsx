@@ -35,7 +35,14 @@ export default async function RootLayout({ children }: LayoutProps<'/'>) {
     <html lang="en" className="h-full">
       <body className="min-h-full antialiased">
         <AppChrome viewer={viewer} demo={demo} />
-        {children}
+        {/*
+          The app is designed at 390x844 and the chrome already centres itself
+          at max-w-md. Without the same constraint here, page content stretched
+          to the viewport: on a desktop browser the home hero is aspect-[4/5],
+          so at 1900px wide it became a 2300px-tall empty gradient and pushed
+          the entire catalogue below the fold. It read as a blank app.
+        */}
+        <div className="mx-auto w-full max-w-md">{children}</div>
         <ServiceWorkerRegistrar />
       </body>
     </html>
