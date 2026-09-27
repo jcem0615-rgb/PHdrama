@@ -240,7 +240,7 @@ export const copy = {
     rendering: (n: number, total: number) => `Rendering ${n} of ${total}…`,
     rendered: (n: number) => `${n} episodes rendered. They play in the app now.`,
     renderHint:
-      'Renders each episode to a real video file in this browser — canvas to WebM, no provider, no key, no per-second bill. It is motion graphics built from the script, not generated footage.',
+      'Renders each episode to a real video file in this browser — canvas to WebM, no provider, no key, no per-second bill. It stages a scene from the script: a location, a lit cast, three shots and a moving camera. Procedural, not generated footage.',
     renderUnsupported: 'This browser cannot record video. Try Chrome or Edge.',
 
     narration: 'Voice narration',
@@ -268,7 +268,7 @@ export const copy = {
     demoNotPersisted:
       'Demo mode has no database, so this breakdown is not saved and cannot be published. Connect Supabase to keep stories, queue renders and publish them as a series.',
     videoPending:
-      'Rendering runs in this browser: canvas to WebM, with narration baked in. Post a story, then press Render the videos. No AI footage provider is chosen — these are motion graphics built from the script, not generated film.',
+      'Rendering runs in this browser: canvas to WebM, with narration baked in. Post a story, then press Render the videos. No AI footage provider is chosen — each reel is a scene staged from the script, not generated film.',
   },
 
   status: {

@@ -40,7 +40,10 @@ is green (`npm run lint && npm run typecheck && npm run build`).
       **Done:** a free local renderer. The Studio records each episode to a real
       WebM in the browser (canvas + MediaRecorder, 720×1560) and stores it —
       uploaded to the `videos` bucket in live mode, IndexedDB in demo mode. No
-      key, no GPU, no per-second charge.
+      key, no GPU, no per-second charge. It composes a staged scene from the
+      script: a location chosen from the text, parallax layers, a rim-lit cast,
+      and three shots with their own camera moves. Procedural cinematography,
+      not generated footage.
       **Done:** voice narration, mixed into the recording so the audio is in
       the file and the reel's runtime follows the voice. Two engines: a built-in
       espeak-ng WASM narrator that needs no key and is the default, and

@@ -69,7 +69,12 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
   so they stay readable. Demo mode lists what is live with Open / Take down.
   **Render the videos** produces real WebM files locally (canvas + MediaRecorder,
   `src/lib/reel-film.ts` + `record-reel.ts`) — free, no key, no GPU, and with
-  built-in narration that is the same. Live mode uploads them and closes the
+  built-in narration that is the same. `reel-film.ts` stages a scene from the
+  script: a location picked from the text (street / room / corridor / church /
+  field / office, with rain and night modifiers), parallax layers moved by a
+  camera, silhouettes proportioned off head size and rim-lit, and one shot per
+  beat (wide → over-the-shoulder → close) each with its own move. Procedural
+  cinematography, not generated footage. Live mode uploads them and closes the
   render job; demo mode keeps them in IndexedDB.
   **No AI video provider is chosen** — every one of them is metered.
   The breakdown has two writers: **built-in**

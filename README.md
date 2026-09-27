@@ -170,8 +170,31 @@ text-free variant used behind headings.
 WebM in the admin's browser via `MediaRecorder`, 720×1560 (9:19.5, so it is not
 cropped on a phone). No API key, no GPU, no per-second charge, no rate limit.
 
-It is motion graphics composed from the script — title card, the beat, the
-cliffhanger — not generated footage. That is the honest trade for free.
+What it draws is a **staged scene**, composed from the episode's own script
+(`src/lib/reel-film.ts`):
+
+- **A location**, picked from the words in the title, beat and hook — a barangay
+  street with a lit skyline, a room with a doorway and a bare bulb, a hospital
+  corridor in one-point perspective, a church arch, a field, an office. Rain and
+  night are modifiers the text has to earn.
+- **Depth.** Sky, midground, floor, cast and air are drawn as separate layers
+  and moved by the camera at different rates. That parallax is what makes the
+  frame read as space rather than a picture.
+- **A cast** — silhouettes proportioned off head size (so they hold up wide
+  *and* in close-up), lit with a rim crescent on the side facing the key light,
+  breathing and swaying slightly.
+- **Three shots.** One per beat, with its own framing and its own camera move:
+  a wide with a slow push in, an over-the-shoulder two-shot, a close-up that
+  pushes in hard on the cliffhanger. Each cut opens on a dark frame.
+- **Atmosphere and grade** — dust in the light, rain when the scene calls for
+  it, a vignette, a warm key from the practical, and film grain from a tile
+  shifted every frame.
+
+**It is not generated footage.** Nothing here is photoreal and nothing here
+invents imagery — it is procedural cinematography, the trick a title sequence
+uses. That is the honest ceiling for something that has to run free, in a
+browser, with no GPU, and it is why there is still a row in the gaps list for a
+real video provider.
 
 In live mode each render uploads to the private `videos` bucket and closes its
 `render_jobs` row, so once every scene is rendered `publish_story` publishes the
