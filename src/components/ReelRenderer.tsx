@@ -57,6 +57,9 @@ export default function ReelRenderer({
   );
 
   const [total, setTotal] = useState(episodes?.length ?? 0);
+  const [backdrop, setBackdrop] = useState<'scene' | 'stock'>('scene');
+  const [stockReady, setStockReady] = useState(false);
+  const [credits, setCredits] = useState<string[]>([]);
   const [narrate, setNarrate] = useState(false);
   const [engines, setEngines] = useState<Engine[]>([]);
   const [engineId, setEngineId] = useState('builtin');
@@ -80,6 +83,14 @@ export default function ReelRenderer({
       } catch {
         // Leaves the engine list empty; the toggle then renders without a picker
         // and the built-in narrator is still what the server uses by default.
+      }
+
+      try {
+        const res = await fetch('/api/admin/stock');
+        const body = (await res.json()) as ApiResponse<{ available: boolean }>;
+        if (!cancelled && body.ok) setStockReady(body.data.available);
+      } catch {
+        // Stock stays off; the drawn scene needs nothing.
       }
     })();
 
@@ -108,10 +119,42 @@ export default function ReelRenderer({
     return res.arrayBuffer();
   }
 
+  /**
+   * A same-origin clip URL for one scene, or undefined to draw the scene.
+   *
+   * Stock is best-effort by design: no clip, a rate limit or an unreachable
+   * Pexels all mean "render the drawn scene", never "lose the episode".
+   */
+  async function footageFor(scene: FilmScene): Promise<string | undefined> {
+    if (backdrop !== 'stock') return undefined;
+
+    try {
+      const res = await fetch('/api/admin/stock', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ scene }),
+      });
+      const body = (await res.json()) as ApiResponse<{
+        clip: { src: string; photographer: string };
+      }>;
+      if (!body.ok) {
+        setError(body.error.message);
+        return undefined;
+      }
+
+      const credit = copy.admin.stockCredit(body.data.clip.photographer);
+      setCredits((current) => (current.includes(credit) ? current : [...current, credit]));
+      return body.data.clip.src;
+    } catch {
+      return undefined;
+    }
+  }
+
   async function renderAll() {
     setBusy(true);
     setError(null);
     setDone(0);
+    setCredits([]);
 
     try {
       if (episodes) {
@@ -129,6 +172,7 @@ export default function ReelRenderer({
 
           const blob = await recordReel(scene, {
             narration: await narration(scene),
+            footageSrc: await footageFor(scene),
             onProgress: setProgress,
           });
           await putRenderedVideo(episode.id, blob);
@@ -149,6 +193,7 @@ export default function ReelRenderer({
           setDone(index);
           const blob = await recordReel(scene, {
             narration: await narration(scene),
+            footageSrc: await footageFor(scene),
             onProgress: setProgress,
           });
 
@@ -181,6 +226,47 @@ export default function ReelRenderer({
   return (
     <div className="mt-3 border-t border-slate-800 pt-3">
       <div className="mb-3 space-y-2.5">
+        <div>
+          <span className="flex items-center gap-1.5 text-xs font-medium text-slate-300">
+            <Clapperboard className="h-3.5 w-3.5" />
+            {copy.admin.backdrop}
+          </span>
+          <div className="mt-1.5 grid grid-cols-2 gap-2">
+            {([
+              { id: 'scene' as const, label: copy.admin.backdropScene, available: true },
+              { id: 'stock' as const, label: copy.admin.backdropStock, available: stockReady },
+            ]).map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                disabled={!option.available}
+                onClick={() => setBackdrop(option.id)}
+                className={`rounded-lg border px-3 py-2.5 text-left transition-colors disabled:opacity-45 ${
+                  option.id === backdrop
+                    ? 'border-sky-500/60 bg-sky-500/10'
+                    : 'border-slate-700 bg-slate-900/60'
+                }`}
+              >
+                <span className="block text-[11px] font-semibold text-slate-100">
+                  {option.label}
+                  {!option.available && (
+                    <span className="ml-1 font-normal text-slate-500">
+                      ({copy.admin.engineUnavailable})
+                    </span>
+                  )}
+                </span>
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+            {backdrop === 'stock'
+              ? copy.admin.backdropStockNote
+              : stockReady
+                ? copy.admin.backdropSceneNote
+                : copy.admin.stockNoKey}
+          </p>
+        </div>
+
         <Checkbox
           tone="staff"
           label={copy.admin.narrationOn}
@@ -266,6 +352,15 @@ export default function ReelRenderer({
 
       {!busy && done > 0 && (
         <p className="mt-2 text-[11px] text-emerald-400">{copy.admin.rendered(done)}</p>
+      )}
+      {credits.length > 0 && (
+        <ul className="mt-1.5 space-y-0.5">
+          {credits.map((credit) => (
+            <li key={credit} className="text-[11px] text-slate-500">
+              {credit}
+            </li>
+          ))}
+        </ul>
       )}
       {error && <p className="mt-2 text-[11px] text-rose-300">{error}</p>}
 

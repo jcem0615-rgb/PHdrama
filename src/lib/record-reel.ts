@@ -1,6 +1,13 @@
 'use client';
 
-import { FILM_HEIGHT, FILM_SECONDS, FILM_WIDTH, drawFilmFrame, type FilmScene } from '@/lib/reel-film';
+import {
+  FILM_HEIGHT,
+  FILM_SECONDS,
+  FILM_WIDTH,
+  drawFilmFrame,
+  type FilmScene,
+  type Footage,
+} from '@/lib/reel-film';
 
 /**
  * Records an episode's reel to a real video file, in the browser.
@@ -32,11 +39,55 @@ export function canRecordReels(): boolean {
 export interface RecordOptions {
   /** MP3 bytes from the narration endpoint. Omit for a silent reel. */
   narration?: ArrayBuffer;
+  /**
+   * Same-origin URL of a clip to use as the backdrop instead of the drawn
+   * scene. Must be same-origin: a cross-origin video taints the canvas and
+   * `captureStream` then throws.
+   */
+  footageSrc?: string;
   onProgress?: (fraction: number) => void;
 }
 
+/**
+ * Loads the backdrop clip and gets it playing.
+ *
+ * Resolves to null rather than throwing on anything — a clip that will not
+ * load is a reason to render the drawn scene, not a reason to lose the reel.
+ */
+async function openFootage(src: string): Promise<HTMLVideoElement | null> {
+  const video = document.createElement('video');
+  video.src = src;
+  video.muted = true;
+  video.loop = true;
+  video.playsInline = true;
+  // Same-origin already, but this makes the intent explicit and keeps the
+  // canvas clean if the URL ever changes.
+  video.crossOrigin = 'anonymous';
+
+  const ready = await new Promise<boolean>((resolve) => {
+    const done = (value: boolean) => () => resolve(value);
+    video.onloadeddata = done(true);
+    video.onerror = done(false);
+    setTimeout(() => resolve(video.readyState >= 2), 15000);
+  });
+
+  if (!ready || video.videoWidth === 0) return null;
+
+  try {
+    await video.play();
+  } catch {
+    return null;
+  }
+  return video;
+}
+
 export async function recordReel(scene: FilmScene, options: RecordOptions = {}): Promise<Blob> {
-  const { narration, onProgress } = options;
+  const { narration, footageSrc, onProgress } = options;
+
+  const video = footageSrc ? await openFootage(footageSrc) : null;
+  const footage: Footage | undefined = video
+    ? { source: video, width: video.videoWidth, height: video.videoHeight }
+    : undefined;
 
   const canvas = document.createElement('canvas');
   canvas.width = FILM_WIDTH;
@@ -95,7 +146,7 @@ export async function recordReel(scene: FilmScene, options: RecordOptions = {}):
       const elapsed = (performance.now() - startedAt) / 1000;
       const t = Math.min(1, elapsed / seconds);
 
-      drawFilmFrame(ctx, scene, t, seconds);
+      drawFilmFrame(ctx, scene, t, seconds, footage);
       onProgress?.(t);
 
       if (t >= 1) {
@@ -109,6 +160,11 @@ export async function recordReel(scene: FilmScene, options: RecordOptions = {}):
 
   recorder.stop();
   source?.stop();
+  if (video) {
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+  }
   tracks.forEach((track) => track.stop());
   await audioContext?.close();
 

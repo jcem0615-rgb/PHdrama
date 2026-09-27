@@ -200,6 +200,30 @@ What it draws is a **staged scene**, composed from the episode's own script
   it, a vignette, a warm key from the practical, and film grain from a tile
   shifted every frame.
 
+### Stock footage as the backdrop
+
+The Studio's **Backdrop** picker has a second option: real clips from Pexels,
+behind the same captions and narration. Set `PEXELS_API_KEY` (the library and
+the key are both free, with no per-clip charge) and it appears; without it, it
+is greyed out with the reason and every reel renders the drawn scene.
+
+Each episode gets a clip matched to its *mood*, not its plot — the search maps
+the same signals the drawn renderer reads for its location onto words a stock
+library actually has footage under ("hospital corridor night", "rice field
+sunset"). That is the honest limit of stock: it fits the feeling, and it will
+never be about your characters. The pick is stable per episode, so a re-render
+does not swap the clip underneath a story you already posted.
+
+Clips are streamed through `/api/admin/stock/clip` rather than loaded from the
+CDN, because a cross-origin video taints the canvas and `captureStream` then
+throws a SecurityError. That route is staff-gated and refuses any URL that is
+not a pexels.com file, so it is not an open proxy.
+
+Stock is best-effort everywhere: no result, a rate limit, or an unreachable
+Pexels all fall back to the drawn scene. The photographer is credited in the
+Studio after each render — Pexels permits commercial use, but read their terms
+before monetising, since stock carries conditions generated footage does not.
+
 **It is not generated footage.** Nothing here is photoreal and nothing here
 invents imagery — it is procedural cinematography, the trick a title sequence
 uses. That is the honest ceiling for something that has to run free, in a

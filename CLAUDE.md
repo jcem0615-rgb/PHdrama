@@ -79,6 +79,15 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
   beat (wide → over-the-shoulder → close) each with its own move. Procedural
   cinematography, not generated footage. Live mode uploads them and closes the
   render job; demo mode keeps them in IndexedDB.
+  **Backdrop** picks what goes behind the captions: the drawn scene (default,
+  no key) or **stock footage** from Pexels (`src/server/story/stock.ts`,
+  `/api/admin/stock`) when `PEXELS_API_KEY` is set — real clips of real people,
+  free library and free key, matched to each episode's mood and credited to the
+  photographer. Clips are proxied through `/api/admin/stock/clip` because a
+  cross-origin video taints the canvas and `captureStream` then refuses; that
+  route is staff-gated and will only fetch pexels.com. Stock is best-effort:
+  no clip, a rate limit or an unreachable Pexels all fall back to the drawn
+  scene rather than losing the episode.
   **No AI video provider is chosen** — every one of them is metered.
   The breakdown has two writers: **built-in**
   (`src/server/story/builtin-writer.ts`) is the default and needs no key — it

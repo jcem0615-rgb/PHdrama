@@ -889,7 +889,16 @@ function grain(ctx: CanvasRenderingContext2D, t: number): void {
   ctx.restore();
 }
 
-function drawGrade(ctx: CanvasRenderingContext2D, scene: FilmScene): void {
+/**
+ * `overFootage` keeps the grade out of the way of a real clip: no hue-tinted
+ * key (the footage has its own colour and the two fight), a lighter vignette,
+ * and only enough scrim to keep the caption readable.
+ */
+function drawGrade(
+  ctx: CanvasRenderingContext2D,
+  scene: FilmScene,
+  overFootage = false,
+): void {
   const vignette = ctx.createRadialGradient(
     FILM_WIDTH / 2,
     FILM_HEIGHT * 0.46,
@@ -899,12 +908,13 @@ function drawGrade(ctx: CanvasRenderingContext2D, scene: FilmScene): void {
     FILM_WIDTH * 1.02,
   );
   vignette.addColorStop(0, 'rgba(0,0,0,0)');
-  vignette.addColorStop(1, 'rgba(0,0,0,0.5)');
+  vignette.addColorStop(1, overFootage ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.5)');
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, FILM_WIDTH, FILM_HEIGHT);
 
   // A warm key from the light source, kept light — the earlier soft-light pass
   // over a hue-rotated sky turned every location the same olive sludge.
+  if (!overFootage) {
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   const key = ctx.createRadialGradient(
@@ -916,11 +926,12 @@ function drawGrade(ctx: CanvasRenderingContext2D, scene: FilmScene): void {
   ctx.fillStyle = key;
   ctx.fillRect(0, 0, FILM_WIDTH, FILM_HEIGHT);
   ctx.restore();
+  }
 
-  const scrim = ctx.createLinearGradient(0, FILM_HEIGHT * 0.5, 0, FILM_HEIGHT);
+  const scrim = ctx.createLinearGradient(0, FILM_HEIGHT * (overFootage ? 0.58 : 0.5), 0, FILM_HEIGHT);
   scrim.addColorStop(0, 'rgba(0,0,0,0)');
-  scrim.addColorStop(0.62, 'rgba(0,0,0,0.5)');
-  scrim.addColorStop(1, 'rgba(0,0,0,0.88)');
+  scrim.addColorStop(0.62, overFootage ? 'rgba(0,0,0,0.42)' : 'rgba(0,0,0,0.5)');
+  scrim.addColorStop(1, overFootage ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.88)');
   ctx.fillStyle = scrim;
   ctx.fillRect(0, 0, FILM_WIDTH, FILM_HEIGHT);
 }
@@ -985,6 +996,31 @@ function drawScene(
   grain(ctx, t);
 }
 
+/**
+ * Real footage as the backdrop, cover-fitted with a slow push.
+ *
+ * Stock clips arrive in whatever shape the camera shot them; the reel is
+ * 9:19.5. Cover-fit crops rather than letterboxes, and the push keeps the
+ * frame moving in the same language as the procedural camera so a series can
+ * mix the two without the cut announcing itself.
+ */
+function drawFootage(
+  ctx: CanvasRenderingContext2D,
+  footage: CanvasImageSource,
+  sourceW: number,
+  sourceH: number,
+  t: number,
+): void {
+  if (sourceW <= 0 || sourceH <= 0) return;
+
+  const push = 1.06 + ease(t) * 0.1;
+  const scale = Math.max(FILM_WIDTH / sourceW, FILM_HEIGHT / sourceH) * push;
+  const w = sourceW * scale;
+  const h = sourceH * scale;
+
+  ctx.drawImage(footage, (FILM_WIDTH - w) / 2, (FILM_HEIGHT - h) / 2, w, h);
+}
+
 // ---------------------------------------------------------------------------
 // Captions
 // ---------------------------------------------------------------------------
@@ -1018,12 +1054,20 @@ function drawBlock(
   ctx.globalAlpha = 1;
 }
 
+/** A live clip to use instead of the drawn scene. */
+export interface Footage {
+  source: CanvasImageSource;
+  width: number;
+  height: number;
+}
+
 /** `t` is 0–1 across the whole reel, whatever its runtime. */
 export function drawFilmFrame(
   ctx: CanvasRenderingContext2D,
   scene: FilmScene,
   t: number,
   totalSeconds = FILM_SECONDS,
+  footage?: Footage,
 ): void {
   const staging = stage(scene);
   const seed = seedOf(scene);
@@ -1045,7 +1089,18 @@ export function drawFilmFrame(
   const alpha = Math.max(0, Math.min(1, Math.min(local / 0.18, (1 - local) / 0.12, 1)));
   const lift = (1 - ease(Math.min(1, local / 0.4))) * 26;
 
-  drawScene(ctx, scene, staging, SHOTS[index], local, t, totalSeconds, seed);
+  if (footage) {
+    // Real footage replaces the drawn scene entirely — no silhouettes over a
+    // photograph of actual people. The grade and the grain still run, so the
+    // captions sit on the same plate either way.
+    ctx.fillStyle = '#05060a';
+    ctx.fillRect(0, 0, FILM_WIDTH, FILM_HEIGHT);
+    drawFootage(ctx, footage.source, footage.width, footage.height, t);
+    drawGrade(ctx, scene, true);
+    grain(ctx, t);
+  } else {
+    drawScene(ctx, scene, staging, SHOTS[index], local, t, totalSeconds, seed);
+  }
 
   // A cut should feel like a cut: one dark frame at the head of each shot.
   if (index > 0 && local < 0.035) {

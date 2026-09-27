@@ -243,6 +243,22 @@ export const copy = {
       'Renders each episode to a real video file in this browser — canvas to WebM, no provider, no key, no per-second bill. It stages a scene from the script: a location, a lit cast, three shots and a moving camera. Procedural, not generated footage.',
     renderUnsupported: 'This browser cannot record video. Try Chrome or Edge.',
 
+    backdrop: 'Backdrop',
+    backdropScene: 'Drawn scene',
+    backdropSceneNote:
+      'The built-in renderer — a location, a lit cast that acts out the beat, and a moving camera. No key, no limit.',
+    backdropStock: 'Stock footage',
+    backdropStockNote:
+      'Real footage from Pexels, matched to the mood of each episode and credited to the photographer. Free library, free key, no per-clip charge — but it is stock: it fits the feeling, not your plot.',
+    stockCredit: (name: string) => `Footage by ${name} on Pexels`,
+    stockNoKey:
+      'Stock footage needs a Pexels API key. Add PEXELS_API_KEY and reload — the key and the library are both free.',
+    stockRejected: 'Pexels rejected the key. Check PEXELS_API_KEY.',
+    stockRateLimited: 'Pexels rate limit reached. Try again in a while.',
+    stockNothing: 'No usable clip came back for this episode. It will render the drawn scene instead.',
+    stockFailed: 'Could not reach Pexels. The episode will render the drawn scene instead.',
+    stockSearching: 'Finding footage…',
+
     narration: 'Voice narration',
     narrationOn: 'Narrate each episode',
     narrationHint:
