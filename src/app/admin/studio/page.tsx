@@ -6,6 +6,7 @@ import StoryStudio from '@/components/StoryStudio';
 import { copy } from '@/lib/copy';
 import { isDemoMode, listPostedDemoStories, listStories } from '@/server/repository';
 import { getStaff } from '@/server/staff';
+import { hasStock } from '@/server/story/stock';
 
 export const metadata: Metadata = { title: copy.admin.studio };
 export const dynamic = 'force-dynamic';
@@ -18,7 +19,7 @@ export default async function StudioPage() {
 
   return (
     <StaffShell staff={staff}>
-      <StoryStudio stories={stories} posted={posted} demo={isDemoMode()} />
+      <StoryStudio stories={stories} posted={posted} demo={isDemoMode()} stock={hasStock()} />
     </StaffShell>
   );
 }

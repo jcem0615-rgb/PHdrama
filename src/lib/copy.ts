@@ -284,7 +284,9 @@ export const copy = {
     demoNotPersisted:
       'Demo mode has no database, so this breakdown is not saved and cannot be published. Connect Supabase to keep stories, queue renders and publish them as a series.',
     videoPending:
-      'Rendering runs in this browser: canvas to WebM, with narration baked in. Post a story, then press Render the videos. No AI footage provider is chosen — each reel is a scene staged from the script, not generated film.',
+      'Rendering runs in this browser: canvas to WebM, with narration baked in. Post a story, then press Render the videos — the Backdrop picker is on the posted card. Each reel is a scene staged from the script; no AI footage provider is chosen, and there is no free one.',
+    videoPendingStock:
+      'Rendering runs in this browser: canvas to WebM, with narration baked in. Post a story, then press Render the videos — the Backdrop picker is on the posted card, and Pexels stock footage is switched on. No AI footage provider is chosen, so the choice is a drawn scene or real stock clips.',
   },
 
   status: {

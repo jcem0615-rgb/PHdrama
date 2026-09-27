@@ -51,10 +51,13 @@ export default function StoryStudio({
   stories,
   posted,
   demo,
+  stock,
 }: {
   stories: Story[];
   posted: PostedSummary[];
   demo: boolean;
+  /** Whether PEXELS_API_KEY is set, so the notice can say what is actually on. */
+  stock: boolean;
 }) {
   const router = useRouter();
   const [premise, setPremise] = useState('');
@@ -102,7 +105,9 @@ export default function StoryStudio({
         <p className="mt-1.5 text-xs leading-relaxed text-slate-400">{copy.admin.studioSubtitle}</p>
       </header>
 
-      <Notice icon={<Film className="h-3.5 w-3.5" />}>{copy.admin.videoPending}</Notice>
+      <Notice icon={<Film className="h-3.5 w-3.5" />}>
+        {stock ? copy.admin.videoPendingStock : copy.admin.videoPending}
+      </Notice>
 
       {demo && <PostedList posted={posted} />}
 
