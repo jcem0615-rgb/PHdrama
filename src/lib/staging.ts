@@ -6,6 +6,14 @@
  * when you tap it should be the same place. Two copies of these patterns would
  * drift apart within a week.
  *
+ * They agree on the signals, not always on the answer. The reel reads the
+ * script's slugline when it has one, which is the writer naming the set
+ * outright; the poster route only has the episode's title and hook, because in
+ * demo mode the script never reaches the server. So a scripted episode can get
+ * a poster staged from its title and a reel staged from its slugline. Closing
+ * that would mean carrying scripts server-side in demo mode, and the demo
+ * cookie has no room — see src/lib/demo/scripts.ts.
+ *
  * Pure — no DOM, no server bindings — so both the canvas renderer and the SVG
  * poster route can use it.
  */

@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { parseScript, spokenText } from '@/lib/script-lines';
+
 /**
  * ElevenLabs narration.
  *
@@ -36,7 +38,21 @@ export function narrationText(scene: {
   title: string;
   beat: string;
   hook: string;
+  script?: string;
 }): string {
+  // With a script, the narrator reads the scene: the same words the captions
+  // show, so the voice and the picture are saying the same thing. The cap is
+  // generous because a five-minute episode is a five-minute performance.
+  if (scene.script) {
+    const spoken = spokenText(parseScript(scene.script));
+    if (spoken) {
+      return `Episode ${scene.episodeNumber}. ${scene.title.replace(/\.*$/, '')}. ${spoken}`.slice(
+        0,
+        6000,
+      );
+    }
+  }
+
   return [
     `Episode ${scene.episodeNumber}.`,
     `${scene.title.replace(/\.*$/, '')}.`,

@@ -15,6 +15,7 @@
  * preview and for the recorded file.
  */
 
+import { castOf, lineAt, layOutScript, parseScript, type TimedLine } from '@/lib/script-lines';
 import { stageFrom, type Staging } from '@/lib/staging';
 
 export interface FilmScene {
@@ -23,6 +24,8 @@ export interface FilmScene {
   title: string;
   beat: string;
   hook: string;
+  /** The episode's script. When present the reel performs it line by line. */
+  script?: string;
   /** 0–360, the series' colour identity. */
   hue: number;
 }
@@ -33,7 +36,7 @@ export interface FilmScene {
  * words land with the picture.
  */
 export const BEAT_WEIGHTS = [1, 1, 1];
-export const FILM_SECONDS = 15;
+export const FILM_SECONDS = 300;
 const WEIGHT_TOTAL = BEAT_WEIGHTS.reduce((a, b) => a + b, 0);
 
 export function beatSeconds(totalSeconds: number): number[] {
@@ -103,7 +106,27 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): st
 // ---------------------------------------------------------------------------
 
 /** Shared with the poster route, so a card and its reel show the same place. */
+/**
+ * Where this episode plays.
+ *
+ * The slugline wins when there is one. That is the whole job of a slugline —
+ * "INT. BARANGAY — NIGHT" is the writer naming the set — and reading the title
+ * and hook instead put a scripted barangay argument in an empty field, which is
+ * a flat gradient with nobody in it.
+ */
 function stage(scene: FilmScene): Staging {
+  const slug = scene.script?.split('\n').find((line) => /^(INT\.|EXT\.)/i.test(line.trim()));
+  if (slug) {
+    const staging = stageFrom(slug);
+    return {
+      ...staging,
+      // The slugline carries the set and the time of day; rain is weather, and
+      // only the scene's own text says whether it is falling.
+      rain: stageFrom(`${scene.beat} ${scene.hook} ${scene.script ?? ''}`).rain,
+      night: /\bNIGHT\b/i.test(slug) ? true : /\b(DAY|MORNING|DAWN|AFTERNOON)\b/i.test(slug) ? false : staging.night,
+    };
+  }
+
   return stageFrom(`${scene.title} ${scene.beat} ${scene.hook} ${scene.seriesTitle}`);
 }
 
@@ -497,6 +520,8 @@ interface FigureOptions {
   act: Act;
   /** Big enough that a blank oval would read as a mask, so draw a face. */
   face?: boolean;
+  /** 0–1 through the line this figure is speaking; 0 when they are listening. */
+  talk?: number;
 }
 
 /**
@@ -521,6 +546,15 @@ function paintFigure(ctx: CanvasRenderingContext2D, o: FigureOptions, color: str
   const sway = Math.sin(cycle * 0.65) * r * 0.05;
   // Weight rocks slowly from one leg to the other.
   const weight = Math.sin(cycle * 0.45) * 0.35;
+
+  // Speech: a fast jaw under a slower nod. Syllables are not evenly spaced, so
+  // two detuned waves read better than one — and it stops dead at the end of
+  // the line rather than mouthing into silence.
+  const talking = o.talk && o.talk > 0 && o.talk < 0.97 ? 1 : 0;
+  const jaw =
+    talking *
+    Math.max(0, Math.sin((o.talk ?? 0) * 142 + o.phase * 9) * 0.6 + Math.sin((o.talk ?? 0) * 231) * 0.4);
+  const nod = talking * Math.sin((o.talk ?? 0) * 26) * 0.035;
 
   const cy = o.headCy + breathe + a.drop * r;
   const lean = a.lean * f * r;
@@ -648,7 +682,7 @@ function paintFigure(ctx: CanvasRenderingContext2D, o: FigureOptions, color: str
   ctx.stroke();
 
   // --- head ------------------------------------------------------------------
-  const tilt = f * 0.06 + a.headTilt + Math.sin(cycle * 0.5) * 0.02;
+  const tilt = f * 0.06 + a.headTilt + nod + Math.sin(cycle * 0.5) * 0.02;
   const turn = a.headTurn;
 
   ctx.save();
@@ -688,7 +722,7 @@ function paintFigure(ctx: CanvasRenderingContext2D, o: FigureOptions, color: str
     ctx.quadraticCurveTo(r * p * 0.9, r * 0.33, r * p * 0.84, r * 0.4);
     ctx.quadraticCurveTo(r * p * 0.74, r * 0.44, r * p * 0.86, r * 0.52);
     // Chin, then the jaw running back under the ear.
-    ctx.quadraticCurveTo(r * p * 0.82, r * 0.74, r * p * 0.56, r * 0.88);
+    ctx.quadraticCurveTo(r * p * 0.82, r * 0.74 + jaw * r * 0.2, r * p * 0.56, r * 0.88 + jaw * r * 0.26);
     ctx.quadraticCurveTo(r * p * 0.2, r * 1.0, -r * p * 0.42, r * 0.78);
     ctx.quadraticCurveTo(-r * 0.84, r * 0.38, -r * 0.82, -r * 0.18);
     ctx.quadraticCurveTo(-r * 0.78, -r * 0.86, 0, -r * 1.02);
@@ -707,6 +741,12 @@ function paintFigure(ctx: CanvasRenderingContext2D, o: FigureOptions, color: str
     ctx.lineTo(r * px * 0.94, r * 0.3);
     ctx.closePath();
     ctx.fill();
+
+    if (jaw > 0.05) {
+      ctx.beginPath();
+      ctx.ellipse(f * r * 0.34, r * 0.72 + jaw * r * 0.16, r * 0.5, r * (0.2 + jaw * 0.26), 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   if (!o.longHair) {
@@ -742,41 +782,80 @@ function drawFigure(ctx: CanvasRenderingContext2D, o: FigureOptions): void {
 }
 
 /** Stages the shot. The lower third stays clear so the caption has a home. */
+/**
+ * How one member of the cast looks, from their position in the script.
+ *
+ * A scene has three people in it more often than two, and clamping the third
+ * onto the second drew a different character as the same silhouette — the
+ * caption said BELEN over a figure the audience had learned was RAMON. These
+ * are the handful of knobs a silhouette has: which way they stand, hair, and
+ * how tall.
+ */
+function look(castIndex: number): { longHair: boolean; scale: number; phase: number } {
+  const i = Math.max(0, castIndex);
+  return {
+    longHair: i % 2 === 0,
+    // Enough difference in height to tell apart at a glance, not caricature.
+    scale: [1, 1.07, 0.93, 1.03][i % 4],
+    phase: [0, 0.55, 0.3, 0.8][i % 4],
+  };
+}
+
 function drawCast(
   ctx: CanvasRenderingContext2D,
   scene: FilmScene,
   shot: ShotKind,
   local: number,
+  /** Index into the cast of whoever is speaking, or -1 for nobody. */
+  speaking = -1,
+  /** 0–1 through the current line, for the talking rhythm. */
+  saying = 0,
 ): void {
   const rimHue = (scene.hue + 40) % 360;
   const act = actAt(actFor(scene, shot), local);
   // The second figure is reacting to the first, half a beat behind.
   const react = actAt(shot === 'wide' ? 'guard' : 'listen', local);
 
+  // Whoever is speaking, and whoever they are speaking to. The listener is the
+  // next person along, so a three-hander keeps pairing people differently
+  // instead of always putting the same two in frame.
+  const me = look(speaking);
+  const you = look(speaking < 0 ? 1 : speaking + 1);
+  // Which side of the frame the speaker takes. Alternating by cast index is
+  // what makes a cut read as crossing to the other person.
+  const flipped = speaking > 0 && speaking % 2 === 1;
+
   if (shot === 'wide') {
-    const r = 23;
+    const r = 23 * me.scale;
     drawFigure(ctx, {
-      x: FILM_WIDTH * 0.53, headCy: HORIZON + 40 - r * 13, headR: r,
-      facing: 1, rimHue, rim: 0.52, t: local, phase: 0, longHair: true, act,
+      x: FILM_WIDTH * (flipped ? 0.73 : 0.53), headCy: HORIZON + 40 - r * 13, headR: r,
+      facing: flipped ? -1 : 1, rimHue, rim: speaking >= 0 ? 0.68 : 0.4, t: local, phase: me.phase,
+      longHair: me.longHair, act, talk: speaking >= 0 ? saying : 0,
     });
-    const r2 = 21;
+    const r2 = 21 * you.scale;
     drawFigure(ctx, {
-      x: FILM_WIDTH * 0.73, headCy: HORIZON + 26 - r2 * 13, headR: r2,
-      facing: -1, rimHue, rim: 0.32, t: local, phase: 0.4, act: react,
+      x: FILM_WIDTH * (flipped ? 0.53 : 0.73), headCy: HORIZON + 26 - r2 * 13, headR: r2,
+      facing: flipped ? 1 : -1, rimHue, rim: 0.32, t: local, phase: you.phase,
+      longHair: you.longHair, act: react,
     });
     return;
   }
 
   if (shot === 'two') {
-    // Over the shoulder: the near figure is a cropped mass in the corner, and
-    // the one we are watching stands clear of them, mid-frame.
+    // Shot / reverse shot. Whoever is speaking is the one we see: the camera
+    // crosses to them and the listener becomes the shoulder in the corner.
+    // Without this the same figure mouthed every line and only the name above
+    // the caption changed, which read as one person doing all the voices.
     drawFigure(ctx, {
-      x: FILM_WIDTH * 0.6, headCy: FILM_HEIGHT * 0.26, headR: 52,
-      facing: -1, rimHue, rim: 0.6, t: local, phase: 0, longHair: true, act,
+      x: FILM_WIDTH * (flipped ? 0.4 : 0.6), headCy: FILM_HEIGHT * 0.26, headR: 52 * me.scale,
+      facing: flipped ? 1 : -1, rimHue, rim: speaking >= 0 ? 0.72 : 0.44, t: local, phase: me.phase,
+      longHair: me.longHair, act, talk: speaking >= 0 ? saying : 0,
     });
     drawFigure(ctx, {
-      x: -FILM_WIDTH * 0.06, headCy: FILM_HEIGHT * 0.56, headR: 120,
-      facing: 1, rimHue, rim: 0.2, t: local, phase: 0.55, act: react,
+      x: flipped ? FILM_WIDTH * 1.06 : -FILM_WIDTH * 0.06,
+      headCy: FILM_HEIGHT * 0.56, headR: 120 * you.scale,
+      facing: flipped ? -1 : 1, rimHue, rim: 0.18, t: local, phase: you.phase,
+      longHair: you.longHair, act: react, talk: 0,
     });
     return;
   }
@@ -785,8 +864,11 @@ function drawCast(
   drawFigure(ctx, {
     // Sized against the close-up's own zoom (~1.5–1.9x): the head should read
     // as about a third of the frame, not fill it.
-    x: FILM_WIDTH * 0.54, headCy: FILM_HEIGHT * 0.4, headR: 124,
-    facing: -1, rimHue, rim: 0.7, t: local, phase: 0, longHair: true, act, face: true,
+    x: FILM_WIDTH * (flipped ? 0.46 : 0.54),
+    headCy: FILM_HEIGHT * 0.4, headR: 124 * me.scale,
+    facing: flipped ? 1 : -1,
+    rimHue, rim: speaking >= 0 ? 0.78 : 0.62, t: local, phase: me.phase,
+    longHair: me.longHair, act, face: true, talk: speaking >= 0 ? saying : 0,
   });
 }
 
@@ -926,6 +1008,8 @@ function drawScene(
   t: number,
   seconds: number,
   seed: number,
+  speaking = -1,
+  saying = 0,
 ): void {
   const shake = Math.sin(t * 37) * 1.6 + Math.sin(t * 11.3) * 2.2;
   const camera = cameraFor(shot, local, shake);
@@ -959,7 +1043,7 @@ function drawScene(
   // --- the cast --------------------------------------------------------------
   ctx.save();
   withCamera(ctx, camera, 0.88);
-  drawCast(ctx, scene, shot, local);
+  drawCast(ctx, scene, shot, local, speaking, saying);
   ctx.restore();
 
   // --- air -------------------------------------------------------------------
@@ -999,12 +1083,50 @@ function drawFootage(
 }
 
 // ---------------------------------------------------------------------------
+// The performance
+// ---------------------------------------------------------------------------
+
+interface Performance {
+  timed: TimedLine[];
+  cast: string[];
+}
+
+/**
+ * Parsing per frame would mean doing it nine thousand times for a five-minute
+ * reel, so the laid-out script is cached against the text and runtime it came
+ * from.
+ */
+const performances = new Map<string, Performance>();
+
+function performanceFor(script: string, totalSeconds: number): Performance {
+  const key = `${Math.round(totalSeconds)}|${script}`;
+  const cached = performances.get(key);
+  if (cached) return cached;
+
+  const lines = parseScript(script);
+  const built: Performance = { timed: layOutScript(lines, totalSeconds), cast: castOf(lines) };
+
+  // The map only ever holds the handful of episodes one render pass touches.
+  if (performances.size > 40) performances.clear();
+  performances.set(key, built);
+  return built;
+}
+
+// ---------------------------------------------------------------------------
 // Captions
 // ---------------------------------------------------------------------------
 
 function drawBlock(
   ctx: CanvasRenderingContext2D,
-  lines: { text: string; size: number; weight: number; italic?: boolean; alpha: number; gap: number }[],
+  lines: {
+    text: string;
+    size: number;
+    weight: number;
+    italic?: boolean;
+    alpha: number;
+    gap: number;
+    colour?: string;
+  }[],
   bottom: number,
   lift: number,
 ): void {
@@ -1015,6 +1137,7 @@ function drawBlock(
   for (const line of lines) {
     y += line.size * 1.16;
     ctx.globalAlpha = line.alpha;
+    ctx.fillStyle = line.colour ?? '#fff';
     ctx.font = `${line.italic ? 'italic ' : ''}${line.weight} ${line.size}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
 
     // A drop shadow, because the plate behind the text is now a moving image.
@@ -1029,6 +1152,7 @@ function drawBlock(
     y += line.gap;
   }
   ctx.globalAlpha = 1;
+  ctx.fillStyle = '#fff';
 }
 
 /** A live clip to use instead of the drawn scene. */
@@ -1036,6 +1160,118 @@ export interface Footage {
   source: CanvasImageSource;
   width: number;
   height: number;
+}
+
+/**
+ * One line of the script, on screen, attributed.
+ *
+ * Dialogue carries the speaker's name above it so you can follow a scene with
+ * the sound off — which is how most of this audience watches. Action lines are
+ * italic and unattributed, the slugline is a small header, and the hook gets
+ * the NEXT treatment the reel always had.
+ */
+function drawLineCaption(
+  ctx: CanvasRenderingContext2D,
+  scene: FilmScene,
+  line: TimedLine,
+  progress: number,
+  elapsed: number,
+  totalSeconds: number,
+): void {
+  ctx.fillStyle = '#fff';
+  ctx.textBaseline = 'alphabetic';
+
+  const maxWidth = FILM_WIDTH - MARGIN_X * 2;
+  // Fade in fast, hold, fade out just before the cut.
+  const alpha = Math.max(0, Math.min(1, Math.min(progress / 0.08, (1 - progress) / 0.1, 1)));
+  const lift = (1 - ease(Math.min(1, progress / 0.25))) * 18;
+
+  // A thin progress hairline: five minutes is long enough that a viewer wants
+  // to know where they are. Drawn before the per-kind branches below, because
+  // each of them returns early and a bar that blinks off on every action line
+  // is worse than no bar.
+  const done = Math.min(1, elapsed / Math.max(1e-6, totalSeconds));
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.fillRect(0, FILM_HEIGHT - 6, FILM_WIDTH, 3);
+  ctx.fillStyle = `hsl(${(scene.hue + 40) % 360} 85% 62%)`;
+  ctx.fillRect(0, FILM_HEIGHT - 6, FILM_WIDTH * done, 3);
+  ctx.fillStyle = '#fff';
+
+  if (line.kind === 'slug') {
+    ctx.font = '700 34px system-ui, sans-serif';
+    drawBlock(
+      ctx,
+      [{ text: line.text, size: 34, weight: 700, alpha: alpha * 0.85, gap: 0 }],
+      FILM_HEIGHT * 0.3,
+      lift,
+    );
+
+    // The title card rides the opening slugline rather than stealing a beat.
+    ctx.font = '800 64px system-ui, sans-serif';
+    drawBlock(
+      ctx,
+      [
+        { text: `EPISODE ${scene.episodeNumber}`, size: 28, weight: 700, alpha: alpha * 0.55, gap: 18 },
+        ...wrap(ctx, scene.title, maxWidth).map((text) => ({
+          text, size: 64, weight: 800, alpha, gap: 0,
+        })),
+        { text: scene.seriesTitle, size: 26, weight: 600, alpha: alpha * 0.55, gap: 0 },
+      ],
+      TEXT_BOTTOM,
+      lift,
+    );
+    return;
+  }
+
+  if (line.kind === 'hook') {
+    ctx.font = 'italic 700 42px system-ui, sans-serif';
+    drawBlock(
+      ctx,
+      [
+        { text: 'NEXT', size: 28, weight: 700, alpha: alpha * 0.75, gap: 20 },
+        ...wrap(ctx, line.text, maxWidth).map((text) => ({
+          text, size: 42, weight: 700, italic: true, alpha, gap: 0,
+        })),
+      ],
+      TEXT_BOTTOM,
+      lift,
+    );
+    return;
+  }
+
+  if (line.kind === 'action') {
+    ctx.font = 'italic 500 34px system-ui, sans-serif';
+    drawBlock(
+      ctx,
+      wrap(ctx, line.text, maxWidth).map((text) => ({
+        text, size: 34, weight: 500, italic: true, alpha: alpha * 0.82, gap: 0,
+      })),
+      TEXT_BOTTOM,
+      lift,
+    );
+    return;
+  }
+
+  // Dialogue. The name is small and coloured; the line is what carries.
+  ctx.font = '600 44px system-ui, sans-serif';
+  const lines = wrap(ctx, line.text, maxWidth);
+
+  drawBlock(
+    ctx,
+    [
+      {
+        text: line.speaker ?? '',
+        size: 26,
+        weight: 800,
+        alpha: alpha * 0.9,
+        gap: 14,
+        colour: `hsl(${(scene.hue + 40) % 360} 85% 70%)`,
+      },
+      ...lines.map((text) => ({ text, size: 44, weight: 600, alpha, gap: 0 })),
+    ],
+    TEXT_BOTTOM,
+    lift,
+  );
 }
 
 /** `t` is 0–1 across the whole reel, whatever its runtime. */
@@ -1048,9 +1284,65 @@ export function drawFilmFrame(
 ): void {
   const staging = stage(scene);
   const seed = seedOf(scene);
+  const elapsed = t * totalSeconds;
+
+  // --- performing the script ------------------------------------------------
+  // An episode with a script plays it: one line at a time, attributed, with the
+  // figure who is speaking doing the talking. Without one, it falls back to the
+  // three title cards the reel used to be.
+  const show = scene.script ? performanceFor(scene.script, totalSeconds) : null;
+  const playing = show && show.timed.length > 0 ? lineAt(show.timed, elapsed) : null;
+
+  if (playing) {
+    const { line, progress, index } = playing;
+
+    // Who is on screen, and how close.
+    //
+    // Content decides first: the slugline establishes the room, a stage
+    // direction is a moment to see it, the cliffhanger and any line that runs
+    // long play close. Everything else takes its turn in a coverage pattern,
+    // because fifty lines of the same two-shot is five minutes of one picture —
+    // measured at 46 of 52 before this, and it looked it.
+    const wordy = line.text.split(/\s+/).length > 16;
+    const shot: ShotKind =
+      line.kind === 'slug'
+        ? 'wide'
+        : line.kind === 'action'
+          ? 'wide'
+          : line.kind === 'hook' || wordy
+            ? 'close'
+            : index % 7 === 3
+              ? 'wide'
+              : index % 3 === 1
+                ? 'close'
+                : 'two';
+
+    const speaking = line.kind === 'dialogue' ? Math.max(0, line.castIndex) : -1;
+
+    if (footage) {
+      ctx.fillStyle = '#05060a';
+      ctx.fillRect(0, 0, FILM_WIDTH, FILM_HEIGHT);
+      drawFootage(ctx, footage.source, footage.width, footage.height, t);
+      drawGrade(ctx, scene, true);
+    } else {
+      drawScene(ctx, scene, staging, shot, progress, t, totalSeconds, seed, speaking, progress);
+    }
+    grain(ctx, t);
+
+    // A cut on every change of speaker, not on every line — cutting on a reply
+    // from the same mouth reads as a glitch.
+    const previous = index > 0 ? show!.timed[index - 1] : null;
+    const cut = !previous || previous.castIndex !== line.castIndex || previous.kind !== line.kind;
+    if (cut && progress < 0.04) {
+      ctx.fillStyle = `rgba(0,0,0,${1 - progress / 0.04})`;
+      ctx.fillRect(0, 0, FILM_WIDTH, FILM_HEIGHT);
+    }
+
+    drawLineCaption(ctx, scene, line, progress, elapsed, totalSeconds);
+    return;
+  }
 
   const beats = beatSeconds(totalSeconds);
-  const elapsed = t * totalSeconds;
   let index = 0;
   let consumed = 0;
   for (let i = 0; i < beats.length; i += 1) {

@@ -75,10 +75,24 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
   camera, figures built on a skeleton (neck/shoulders/elbows/wrists/hips/knees/ankles,
   seven heads tall, a carved three-quarter profile in close-up) and rim-lit,
   each playing a keyframed act chosen from the beat's own words (grieve /
-  recoil / confront / plead / leave / guard / listen), and one shot per
-  beat (wide → over-the-shoulder → close) each with its own move. Procedural
-  cinematography, not generated footage. Live mode uploads them and closes the
-  render job; demo mode keeps them in IndexedDB.
+  recoil / confront / plead / leave / guard / listen). Procedural
+  cinematography, not generated footage.
+  **Episodes run ~5 minutes and the reel performs the script.**
+  `src/lib/script-lines.ts` parses it into sluglines / action / `NAME: line`
+  dialogue, lays the lines across the runtime by length, and the renderer gives
+  each line its own shot — slug and action wide, hook or a long line close, the
+  rest on a coverage rotation so fifty lines are not one picture — cutting
+  shot/reverse-shot so speakers swap sides instead of one figure talking all
+  episode. Each cast member keeps their own silhouette, so a third character is
+  not drawn as the second. Captions are attributed; the speaking figure works
+  its jaw and nods. `stage()` reads the slugline first: it is the writer naming
+  the set, and inferring from the title put a barangay scene in an empty field.
+  Recording is real time: ~5.5 min and ~20MB per episode, so a 12-part story is
+  about an hour and ~240MB — `copy.admin.renderCost` says so before the click.
+  In demo mode the script is too big for the cookie, so it goes to IndexedDB
+  (`src/lib/demo/scripts.ts`); in live mode the render route sends it with the
+  scene. Live mode uploads the finished files and closes the render job; demo
+  mode keeps them in IndexedDB.
   **Backdrop** picks what goes behind the captions: the drawn scene (default,
   no key) or **stock footage** from Pexels (`src/server/story/stock.ts`,
   `/api/admin/stock`) when `PEXELS_API_KEY` is set — real clips of real people,
@@ -102,7 +116,11 @@ Full product spec: `docs/MASTER_PROMPT.md`. Architecture: `docs/ARCHITECTURE.md`
 - ⬜ Phases 8–9: rewarded ads, DRM / Android wrapper
 - ⬜ No password reset or email-change flow yet
 - ✅ Voice narration mixed into the rendered reel — audio inside the video file,
-  and the reel's runtime follows the voice. Two engines behind
+  and the reel's runtime follows the voice. Each line of dialogue is synthesised
+  separately and scheduled at its caption's start, because one recording of a
+  whole episode runs ahead of the words on screen within a minute. Each
+  character is cast a different voice (contrasting register first), so a scene
+  is two people rather than one narrator. Two engines behind
   `/api/admin/narrate`, and the browser never holds a key:
   **built-in** (`src/server/story/builtin-voice.ts`) is the default and needs
   nothing — espeak-ng as WASM (`text2wav`) inside the route handler, eight voices

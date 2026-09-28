@@ -125,9 +125,11 @@ not reset it.
 
 Write a premise, pick an episode count, and you get a per-episode breakdown —
 beat, script, and the cliffhanger hook each episode ends on, with the hardest
-hook on episode 5 because that is the last free one. The story is saved with one
-queued render job per scene, and `publish_story()` turns it into a series whose
-episodes are its scenes.
+hook on episode 5 because that is the last free one. Each script is a scene of
+about fifty lines — a slugline, then the cast trading dialogue through an
+opening, a press, a deflection, a turn and a close — which is what fills five
+minutes of screen time. The story is saved with one queued render job per scene,
+and `publish_story()` turns it into a series whose episodes are its scenes.
 
 Two writers, and the Studio says which one wrote:
 
@@ -170,10 +172,18 @@ text-free variant used behind headings.
 WebM in the admin's browser via `MediaRecorder`, 720×1560 (9:19.5, so it is not
 cropped on a phone). No API key, no GPU, no per-second charge, no rate limit.
 
+An episode runs about **five minutes**. Recording is real time — there is no
+faster path, because `MediaRecorder` captures a live canvas — so a five-minute
+episode costs five and a half minutes of wall clock and lands at roughly 20MB.
+A twelve-episode story is about an hour of rendering and ~240MB. Leave the tab
+open and on screen: a backgrounded tab throttles its timers and the recording
+stretches.
+
 What it draws is a **staged scene**, composed from the episode's own script
 (`src/lib/reel-film.ts`):
 
-- **A location**, picked from the words in the title, beat and hook — a barangay
+- **A location**, named by the script's slugline when it has one and otherwise
+  read from the title, beat and hook — a barangay
   street with a lit skyline, a room with a doorway and a bare bulb, a hospital
   corridor in one-point perspective, a church arch, a field, an office. Rain and
   night are modifiers the text has to earn.
@@ -193,9 +203,19 @@ What it draws is a **staged scene**, composed from the episode's own script
   shoulders and brings a hand to the face; a reveal flinches back and turns the
   head away; a confrontation steps in, strides, and reaches. Idle breathing and
   a weight shift run underneath the whole time.
-- **Three shots.** One per beat, with its own framing and its own camera move:
-  a wide with a slow push in, an over-the-shoulder two-shot, a close-up that
-  pushes in hard on the cliffhanger. Each cut opens on a dark frame.
+- **The script, performed.** `src/lib/script-lines.ts` parses the episode into
+  lines — sluglines, action, and `RINA: ...` dialogue — and lays them across the
+  runtime by length, so a four-word retort does not hold the screen as long as a
+  two-sentence threat. Each line is a shot: the caption carries the speaker's
+  name and their words, the figure delivering them works their jaw and nods on
+  the stressed syllables, and the framing cuts shot/reverse-shot so the two
+  characters trade sides of the frame instead of one of them talking all
+  episode, and each member of the cast keeps their own silhouette — hair,
+  height, which way they stand — so a third character is not drawn as the
+  second. Content picks the framing first (a slugline and the stage directions
+  play wide, the cliffhanger and any long line play close) and the rest take
+  their turn in a coverage rotation, because fifty lines of the same two-shot
+  is five minutes of one picture. Each cut opens on a dark frame.
 - **Atmosphere and grade** — dust in the light, rain when the scene calls for
   it, a vignette, a warm key from the practical, and film grain from a tile
   shifted every frame.
@@ -237,11 +257,21 @@ browser's IndexedDB and the player picks them up.
 
 ### Voice narration
 
-Tick **Narrate each episode** before rendering and a narrator reads the episode
-title, its beat and its cliffhanger over the reel. The audio is mixed into the
-same recording, so it is inside the video file rather than replayed alongside
-it, and the reel stretches to however long the voice needs instead of cutting
-the hook off mid-word.
+Tick **Narrate each episode** before rendering and the cast is read aloud. Each
+line of dialogue is synthesised on its own and scheduled at the moment its
+caption appears, so the voice stays with the words on screen — one recording of
+a whole episode drifts ahead of them within a minute.
+
+**Each character gets their own voice.** The one you pick leads; the rest of the
+cast take the engine's other voices, contrasting register first, so a female
+lead is answered by a male voice rather than a slightly softer female one. Two
+voices of the same register are indistinguishable on a phone speaker, which
+would defeat the point. Casting is by position in the script, so it is stable
+across re-renders. The audio is mixed into
+the same recording, so it is inside the video file rather than replayed
+alongside it. An episode with no script falls back to one narration of the
+title, beat and hook, and the reel stretches to however long that voice needs
+instead of cutting the hook off mid-word.
 
 Two narrators, and the Studio shows both:
 
@@ -253,8 +283,9 @@ Two narrators, and the Studio shows both:
   male and female), each checked to sound audibly different from the others.
 - **ElevenLabs** — the quality upgrade. Set `ELEVENLABS_API_KEY` and it appears
   in the picker with the voices your account can use; without the key it is
-  shown greyed out and says why. About 150 characters per episode, so their
-  free tier (10,000 characters a month) covers roughly 65 episodes.
+  shown greyed out and says why. A five-minute scripted episode is around 2,600
+  characters, so their free tier (10,000 characters a month) covers about three
+  or four episodes — the built-in voice is the one that scales.
 
 Either way the browser asks *this app* for audio and never holds a key.
 

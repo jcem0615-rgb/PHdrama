@@ -7,9 +7,11 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import Checkbox from '@/components/form/Checkbox';
 import { copy } from '@/lib/copy';
 import { putRenderedVideo } from '@/lib/demo/rendered-videos';
-import { canRecordReels, recordReel } from '@/lib/record-reel';
+import { getEpisodeScript } from '@/lib/demo/scripts';
+import { canRecordReels, recordReel, type NarratedLine } from '@/lib/record-reel';
+import { layOutScript, parseScript } from '@/lib/script-lines';
 import type { ApiResponse, Episode } from '@/lib/types';
-import type { FilmScene } from '@/lib/reel-film';
+import { FILM_SECONDS, type FilmScene } from '@/lib/reel-film';
 
 /**
  * Renders every episode of a posted story to a real video file, locally.
@@ -20,6 +22,7 @@ import type { FilmScene } from '@/lib/reel-film';
  */
 interface LiveScene extends FilmScene {
   sceneId: string;
+  durationSeconds?: number;
 }
 
 interface Engine {
@@ -150,6 +153,77 @@ export default function ReelRenderer({
     }
   }
 
+  /**
+   * Narration for a scene, one line at a time.
+   *
+   * Each line is scheduled against its own caption in the reel, so they are
+   * fetched separately rather than as one blob — a single recording of a whole
+   * episode runs far ahead of the words on screen.
+   */
+  async function narrationFor(
+    scene: FilmScene,
+    seconds: number,
+  ): Promise<NarratedLine[] | undefined> {
+    if (!narrate || !scene.script) return undefined;
+
+    const parsed = parseScript(scene.script);
+    const timed = layOutScript(parsed, seconds).filter(
+      (line) => line.kind === 'dialogue' || line.kind === 'hook',
+    );
+    if (timed.length === 0) return undefined;
+
+    // A voice per character. One voice reading both sides of an argument is
+    // the thing that made the old reels sound like a summary rather than a
+    // scene: the picked voice leads, and the rest of the cast take the other
+    // voices this engine offers, so casting is stable per episode.
+    //
+    // Registers alternate. Two voices of the same register are hard to tell
+    // apart over a phone speaker, so the lead is answered by a contrasting
+    // one — but putting every contrasting voice first gave a three-hander two
+    // men answering one woman, which is worse than the problem. Interleaving
+    // keeps neighbouring characters distinct without turning the whole cast
+    // into the opposite of the lead. Engines whose descriptions say nothing
+    // about register (any third-party list) fall through to their own order.
+    const list = engine?.voices ?? [];
+    const timbre = (id: string): string => {
+      const note = list.find((v) => v.id === id)?.description ?? '';
+      return /^female/i.test(note) ? 'f' : /^male/i.test(note) ? 'm' : '-';
+    };
+    const lead = timbre(voiceId);
+    const rest = list.map((v) => v.id).filter((id) => id !== voiceId);
+    const against = rest.filter((id) => timbre(id) !== lead);
+    const with_ = rest.filter((id) => timbre(id) === lead);
+
+    const others: string[] = [];
+    for (let i = 0; i < Math.max(against.length, with_.length); i += 1) {
+      if (against[i]) others.push(against[i]);
+      if (with_[i]) others.push(with_[i]);
+    }
+    const voiceFor = (castIndex: number): string =>
+      castIndex <= 0 || others.length === 0
+        ? voiceId
+        : others[(castIndex - 1) % others.length];
+
+    const out: NarratedLine[] = [];
+    for (const line of timed) {
+      const res = await fetch('/api/admin/narrate', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          line: line.text,
+          engine: engineId,
+          voiceId: line.kind === 'hook' ? voiceId : voiceFor(line.castIndex),
+        }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as ApiResponse<unknown> | null;
+        throw new Error(body && !body.ok ? body.error.message : copy.admin.voiceFailed);
+      }
+      out.push({ start: line.start, audio: await res.arrayBuffer() });
+    }
+    return out;
+  }
+
   async function renderAll() {
     setBusy(true);
     setError(null);
@@ -168,10 +242,20 @@ export default function ReelRenderer({
             beat: episode.beat ?? '',
             hook: episode.synopsis,
             hue: episode.posterHue,
+            // With a script the reel performs it line by line; without one it
+            // plays the three title cards.
+            script: (await getEpisodeScript(episode.id)) ?? undefined,
           };
 
+          const seconds = episode.durationSeconds || undefined;
+          const lines = await narrationFor(scene, seconds ?? FILM_SECONDS);
+
           const blob = await recordReel(scene, {
-            narration: await narration(scene),
+            seconds,
+            // A scripted episode gets its lines placed; one without a script
+            // falls back to the single summary narration.
+            narrationLines: lines,
+            narration: lines ? undefined : await narration(scene),
             footageSrc: await footageFor(scene),
             onProgress: setProgress,
           });
@@ -191,8 +275,16 @@ export default function ReelRenderer({
 
         for (const [index, scene] of scenes.entries()) {
           setDone(index);
+
+          // Same performance as demo mode: the script drives who speaks and
+          // for how long, and the narration is placed line by line.
+          const seconds = scene.durationSeconds || undefined;
+          const lines = await narrationFor(scene, seconds ?? FILM_SECONDS);
+
           const blob = await recordReel(scene, {
-            narration: await narration(scene),
+            seconds,
+            narrationLines: lines,
+            narration: lines ? undefined : await narration(scene),
             footageSrc: await footageFor(scene),
             onProgress: setProgress,
           });
@@ -330,6 +422,12 @@ export default function ReelRenderer({
           </label>
         )}
       </div>
+
+      {supported && !busy && done === 0 && (episodes?.length ?? 0) > 0 && (
+        <p className="mb-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2.5 py-2 text-[11px] leading-relaxed text-amber-200/90">
+          {copy.admin.renderCost(episodes!.length)}
+        </p>
+      )}
 
       <button
         type="button"

@@ -10,7 +10,9 @@ import { createAdminSupabase } from '@/server/supabase-admin';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const MAX_BYTES = 8 * 1024 * 1024;
+// A five-minute episode records to roughly 20MB, so the old 8MB ceiling
+// rejected every full-length reel. Supabase's default object limit is 50MB.
+const MAX_BYTES = 48 * 1024 * 1024;
 
 /** The scenes the browser should render, in order. */
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -25,7 +27,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
   const { data, error } = await supabase
     .from('story_scenes')
-    .select('id, scene_number, title, beat, hook, stories(title)')
+    .select('id, scene_number, title, beat, hook, script, duration_seconds, stories(title)')
     .eq('story_id', id)
     .order('scene_number');
 
@@ -41,6 +43,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
         title: string;
         beat: string;
         hook: string;
+        script: string;
+        duration_seconds: number;
         stories: { title: string } | null;
       };
 
@@ -51,6 +55,10 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
         title: scene.title,
         beat: scene.beat ?? '',
         hook: scene.hook ?? '',
+        // The reel performs the script — who speaks, what they say — so the
+        // browser needs the text, not just the beat.
+        script: scene.script || undefined,
+        durationSeconds: scene.duration_seconds || undefined,
         hue: (hue + scene.scene_number * 7) % 360,
       };
     }),

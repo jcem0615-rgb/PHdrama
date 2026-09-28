@@ -36,9 +36,28 @@ export function canRecordReels(): boolean {
   return typeof MediaRecorder !== 'undefined' && pickMimeType(false) !== undefined;
 }
 
+/** One spoken line, and when in the reel it should be heard. */
+export interface NarratedLine {
+  /** Seconds from the top of the reel. */
+  start: number;
+  audio: ArrayBuffer;
+}
+
 export interface RecordOptions {
   /** MP3 bytes from the narration endpoint. Omit for a silent reel. */
   narration?: ArrayBuffer;
+  /**
+   * Narration line by line, each scheduled at its caption's moment.
+   *
+   * One blob for a whole episode desynchronises immediately: the narrator
+   * reads a five-minute script in under two minutes, so the voice runs ahead
+   * of the captions and then leaves minutes of silence. Scheduling each line
+   * against its own start time keeps the voice on the words on screen, and the
+   * gaps between lines become the pauses a scene needs.
+   */
+  narrationLines?: NarratedLine[];
+  /** Reel length in seconds. Defaults to FILM_SECONDS. */
+  seconds?: number;
   /**
    * Same-origin URL of a clip to use as the backdrop instead of the drawn
    * scene. Must be same-origin: a cross-origin video taints the canvas and
@@ -82,7 +101,7 @@ async function openFootage(src: string): Promise<HTMLVideoElement | null> {
 }
 
 export async function recordReel(scene: FilmScene, options: RecordOptions = {}): Promise<Blob> {
-  const { narration, footageSrc, onProgress } = options;
+  const { narration, narrationLines, footageSrc, onProgress } = options;
 
   const video = footageSrc ? await openFootage(footageSrc) : null;
   const footage: Footage | undefined = video
@@ -101,9 +120,47 @@ export async function recordReel(scene: FilmScene, options: RecordOptions = {}):
 
   let audioContext: AudioContext | null = null;
   let source: AudioBufferSourceNode | null = null;
-  let seconds = FILM_SECONDS;
+  // Each node carries its own cue, because a line that fails to decode is
+  // dropped and indices into the original list stop lining up.
+  const scheduled: { at: number; node: AudioBufferSourceNode }[] = [];
+  let seconds = options.seconds ?? FILM_SECONDS;
+  // The runtime the picture is laid out against, which is not always the length
+  // we record for. Lines were cued against this runtime by the caller, so it
+  // must not move underneath them — see the tail extension below.
+  let filmSeconds = seconds;
 
-  if (narration) {
+  if (narrationLines && narrationLines.length > 0) {
+    audioContext = new AudioContext();
+    if (audioContext.state === 'suspended') await audioContext.resume();
+
+    const destination = audioContext.createMediaStreamDestination();
+    const decoded = await Promise.all(
+      narrationLines.map(async (line) => {
+        try {
+          return { start: line.start, buffer: await audioContext!.decodeAudioData(line.audio.slice(0)) };
+        } catch {
+          return null;
+        }
+      }),
+    );
+
+    const usable = decoded.filter((d): d is { start: number; buffer: AudioBuffer } => d !== null);
+    for (const line of usable) {
+      const node = audioContext.createBufferSource();
+      node.buffer = line.buffer;
+      node.connect(destination);
+      scheduled.push({ at: line.start, node });
+    }
+
+    tracks.push(...destination.stream.getAudioTracks());
+
+    // Never cut a line off: if the last one would run past the reel, keep
+    // recording. Only the recording extends — the layout stays where the caller
+    // put it, because these lines were cued against that layout and stretching
+    // it now would walk every caption away from its own voice.
+    const lastEnd = usable.reduce((max, l) => Math.max(max, l.start + l.buffer.duration), 0);
+    seconds = Math.max(seconds, lastEnd + TAIL_SECONDS);
+  } else if (narration) {
     audioContext = new AudioContext();
     // Some browsers start suspended; the render is behind a click, so this is fine.
     if (audioContext.state === 'suspended') await audioContext.resume();
@@ -116,10 +173,15 @@ export async function recordReel(scene: FilmScene, options: RecordOptions = {}):
     source.connect(destination);
 
     tracks.push(...destination.stream.getAudioTracks());
+    // One blob over the title cards: here the reel really does follow the voice,
+    // so the picture stretches with it.
     seconds = Math.max(FILM_SECONDS * 0.6, buffer.duration + TAIL_SECONDS);
+    filmSeconds = seconds;
   }
 
-  const mimeType = pickMimeType(Boolean(narration));
+  // Keyed off whether an audio track actually joined the stream. Asking for a
+  // video-only codec while an audio track is present mislabels the file.
+  const mimeType = pickMimeType(tracks.some((track) => track.kind === 'audio'));
   if (!mimeType) throw new Error('UNSUPPORTED');
 
   const recorder = new MediaRecorder(new MediaStream(tracks), {
@@ -139,6 +201,11 @@ export async function recordReel(scene: FilmScene, options: RecordOptions = {}):
 
   recorder.start();
   source?.start();
+  // Each line goes off at its caption's moment, on the audio clock.
+  if (audioContext && scheduled.length > 0) {
+    const base = audioContext.currentTime + 0.08;
+    for (const line of scheduled) line.node.start(base + line.at);
+  }
   const startedAt = performance.now();
 
   await new Promise<void>((resolve) => {
@@ -146,7 +213,10 @@ export async function recordReel(scene: FilmScene, options: RecordOptions = {}):
       const elapsed = (performance.now() - startedAt) / 1000;
       const t = Math.min(1, elapsed / seconds);
 
-      drawFilmFrame(ctx, scene, t, seconds, footage);
+      // `t` is progress through the recording; the frame is drawn against the
+      // layout's own runtime, so a tail extension plays the last beat out
+      // rather than re-timing the whole episode.
+      drawFilmFrame(ctx, scene, Math.min(1, elapsed / filmSeconds), filmSeconds, footage);
       onProgress?.(t);
 
       if (t >= 1) {
@@ -160,6 +230,13 @@ export async function recordReel(scene: FilmScene, options: RecordOptions = {}):
 
   recorder.stop();
   source?.stop();
+  for (const line of scheduled) {
+    try {
+      line.node.stop();
+    } catch {
+      // Already finished, or never started because the reel ended first.
+    }
+  }
   if (video) {
     video.pause();
     video.removeAttribute('src');

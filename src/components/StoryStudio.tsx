@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import ReelRenderer from '@/components/ReelRenderer';
+import { putEpisodeScript } from '@/lib/demo/scripts';
 import Field from '@/components/form/Field';
 import { copy } from '@/lib/copy';
 import { formatDuration } from '@/lib/format';
@@ -278,8 +279,21 @@ function BreakdownView({
         return;
       }
 
+      const slug = body.data.slug ?? '';
+
+      // The reel performs the script, and the demo cookie has no room for it —
+      // see src/lib/demo/scripts.ts. Keep it in this browser, keyed by the
+      // episode ids the post just minted.
+      if (demo && slug) {
+        await Promise.all(
+          breakdown.scenes.map((scene) =>
+            putEpisodeScript(`${slug}-${String(scene.scene_number).padStart(2, '0')}`, scene.script),
+          ),
+        );
+      }
+
       setPosted({
-        slug: body.data.slug ?? '',
+        slug,
         episodes: body.data.episodes ?? breakdown.scenes.length,
       });
       router.refresh();

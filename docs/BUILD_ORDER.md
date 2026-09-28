@@ -42,12 +42,20 @@ is green (`npm run lint && npm run typecheck && npm run build`).
       uploaded to the `videos` bucket in live mode, IndexedDB in demo mode. No
       key, no GPU, no per-second charge. It composes a staged scene from the
       script: a location chosen from the text, parallax layers, a rim-lit cast,
-      and three shots with their own camera moves. Procedural cinematography,
+      and a shot per line with its own camera move. Procedural cinematography,
       not generated footage.
+      **Done:** episodes run about five minutes, and the reel performs the
+      script rather than summarising it — `src/lib/script-lines.ts` parses the
+      dialogue, lays it out by line length, and the renderer cuts
+      shot/reverse-shot between the two speakers with attributed captions and a
+      working jaw on whoever is talking. Recording is real time, so this costs
+      ~5.5 min and ~20MB per episode.
       **Done:** voice narration, mixed into the recording so the audio is in
-      the file and the reel's runtime follows the voice. Two engines: a built-in
-      espeak-ng WASM narrator that needs no key and is the default, and
-      ElevenLabs when `ELEVENLABS_API_KEY` is set.
+      the file and the reel's runtime follows the voice. Each line of dialogue
+      is synthesised on its own and scheduled against its caption, so the voice
+      does not drift ahead of the words, and each character is cast a different
+      voice. Two engines: a built-in espeak-ng WASM narrator that needs no key
+      and is the default, and ElevenLabs when `ELEVENLABS_API_KEY` is set.
       **Not done:** AI-generated footage. There is no free text-to-video API —
       they all meter GPU time. Implement `VideoProvider` when one is chosen.
       A story with unrendered scenes publishes as a labelled free preview, so

@@ -64,15 +64,30 @@ export async function POST(req: NextRequest) {
   if (!staff) return fail('FORBIDDEN');
 
   const body = (await req.json().catch(() => null)) as {
-    scene?: { episodeNumber: number; title: string; beat: string; hook: string };
+    scene?: {
+      episodeNumber: number;
+      title: string;
+      beat: string;
+      hook: string;
+      /** When present the narrator reads the scene rather than a summary. */
+      script?: string;
+    };
+    /** A single line to speak, instead of a whole scene. */
+    line?: string;
     engine?: string;
     voiceId?: string;
   } | null;
 
+  // One line at a time is how the renderer asks: each line is scheduled against
+  // its own caption, so they have to come back separately.
   const scene = body?.scene;
-  if (!scene || typeof scene.title !== 'string') return fail('INVALID_INPUT');
+  const text =
+    typeof body?.line === 'string' && body.line.trim()
+      ? body.line.trim().slice(0, 400)
+      : scene && typeof scene.title === 'string'
+        ? narrationText(scene)
+        : '';
 
-  const text = narrationText(scene);
   if (!text) return fail('INVALID_INPUT');
 
   // Built-in is the default: it works with nothing configured.

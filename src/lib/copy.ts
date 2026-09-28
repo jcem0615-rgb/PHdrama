@@ -240,7 +240,19 @@ export const copy = {
     rendering: (n: number, total: number) => `Rendering ${n} of ${total}…`,
     rendered: (n: number) => `${n} episodes rendered. They play in the app now.`,
     renderHint:
-      'Renders each episode to a real video file in this browser — canvas to WebM, no provider, no key, no per-second bill. It stages a scene from the script: a location, a lit cast, three shots and a moving camera. Procedural, not generated footage.',
+      'Renders each episode to a real video file in this browser — canvas to WebM, no provider, no key, no per-second bill. It performs the script: a location, a lit cast, and a shot per line that cuts between whoever is speaking. Procedural, not generated footage.',
+    /**
+     * The one thing someone needs to know before they click.
+     *
+     * Recording is real time — MediaRecorder captures a live canvas, so a
+     * five-minute episode costs five minutes. At 15-second reels nobody needed
+     * telling; at five minutes a twelve-part story is an hour, and finding that
+     * out by watching a progress bar is not acceptable.
+     */
+    renderCost: (episodes: number) =>
+      `Records in real time: about ${Math.max(1, Math.round(episodes * 5.5))} min for ${episodes} ${
+        episodes === 1 ? 'episode' : 'episodes'
+      }, ~20MB each. Keep this tab open and in front — a background tab throttles and the recording stretches.`,
     renderUnsupported: 'This browser cannot record video. Try Chrome or Edge.',
 
     backdrop: 'Backdrop',

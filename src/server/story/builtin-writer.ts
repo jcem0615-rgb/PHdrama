@@ -539,10 +539,329 @@ function seriesTitle(cast: Cast, request: ScriptRequest, random: () => number): 
   return pick(SERIES_TITLES[cast.genre], random);
 }
 
-/** Roughly 60–120 seconds per episode, longer as the stakes rise. */
+// ---------------------------------------------------------------------------
+// Exchange blocks
+// ---------------------------------------------------------------------------
+
+/**
+ * A scene is built from exchanges, not from one beat.
+ *
+ * An episode used to be four lines, which is fine over fifteen seconds and
+ * absurd over five minutes — each line would hold the screen for over a minute.
+ * These are the units a scene is actually assembled from: an opening, someone
+ * pressing, someone deflecting, the turn, and the button. Eight of them, drawn
+ * without repeats and seeded per episode, make a conversation with a shape.
+ *
+ * They still recombine rather than invent. The pools are deliberately large so
+ * two episodes in the same act do not read as the same page twice.
+ */
+type Block = (c: Cast) => string[];
+
+const H = (c: Cast) => c.hero.toUpperCase();
+const R = (c: Cast) => c.rival.toUpperCase();
+const A = (c: Cast) => c.ally.toUpperCase();
+
+const OPENERS: readonly Block[] = [
+  (c) => [
+    `ACTION: A door closes somewhere below. Neither of them looks at it.`,
+    `${R(c)}: You're early.`,
+    `${H(c)}: I couldn't sleep.`,
+    `${R(c)}: Nobody in this house sleeps. You'll get used to it.`,
+    `${H(c)}: I'm not planning to be here that long.`,
+  ],
+  (c) => [
+    `${A(c)}: Sit. You've been standing since six.`,
+    `${H(c)}: If I sit down I won't get up.`,
+    `${A(c)}: Then don't get up.`,
+    `ACTION: She sits. She keeps her bag on her lap.`,
+  ],
+  (c) => [
+    `ACTION: Rain on the roof, steady, like something counting.`,
+    `${H(c)}: Can I ask you something?`,
+    `${A(c)}: You can ask.`,
+    `${H(c)}: That's not the same as answering.`,
+    `${A(c)}: No. It isn't.`,
+  ],
+  (c) => [
+    `${R(c)}: Do you know why I hired you?`,
+    `${H(c)}: Because I was cheap.`,
+    `${R(c)}: Because you didn't ask questions at the interview.`,
+    `${H(c)}: I had questions.`,
+    `${R(c)}: I know. That's the part I liked.`,
+  ],
+  (c) => [
+    `ACTION: The light in the hallway is out again. Nobody has fixed it.`,
+    `${A(c)}: Walk in the middle. The boards on the left talk.`,
+    `${H(c)}: Talk to who?`,
+    `${A(c)}: Whoever's listening.`,
+  ],
+  (c) => [
+    `${H(c)}: You've been watching me all week.`,
+    `${R(c)}: I watch everyone.`,
+    `${H(c)}: Not like this.`,
+    `${R(c)}: No. Not like this.`,
+  ],
+];
+
+const PRESSES: readonly Block[] = [
+  (c) => [
+    `${H(c)}: I want to know what happened to him.`,
+    `${R(c)}: He signed. That's what happened.`,
+    `${H(c)}: He couldn't read that contract and you knew it.`,
+    `${R(c)}: He could read his own name. That was enough.`,
+    `ACTION: Her hands go flat on the table so they stop shaking.`,
+  ],
+  (c) => [
+    `${H(c)}: Say her name.`,
+    `${R(c)}: Why?`,
+    `${H(c)}: Because you've been avoiding it for a month and I want to hear how it sounds in your mouth.`,
+    `${R(c)}: ...You don't want that.`,
+    `${H(c)}: I do. Say it.`,
+  ],
+  (c) => [
+    `${H(c)}: Where were you that night?`,
+    `${R(c)}: Working.`,
+    `${H(c)}: Everyone in this house was working that night. Nobody was home. And yet somebody locked that gate from the inside.`,
+    `${R(c)}: Careful.`,
+  ],
+  (c) => [
+    `${A(c)}: Stop looking. Please.`,
+    `${H(c)}: Give me one reason.`,
+    `${A(c)}: Because the last person who looked is in the ground and we all went to the funeral and cried like it was an accident.`,
+    `ACTION: Silence. Somewhere a clock keeps going.`,
+  ],
+  (c) => [
+    `${H(c)}: How much?`,
+    `${R(c)}: Excuse me?`,
+    `${H(c)}: How much did it cost to make everyone in this barangay forget a whole family?`,
+    `${R(c)}: Less than you'd think. That's what should frighten you.`,
+  ],
+  (c) => [
+    `${H(c)}: I found the second set of books.`,
+    `${R(c)}: Then you found nothing. There's no second set.`,
+    `${H(c)}: There is. It's in your handwriting and it's dated.`,
+    `${R(c)}: ...Who else has seen it?`,
+    `${H(c)}: That's the first real question you've asked me.`,
+  ],
+  (c) => [
+    `${H(c)}: You buried her under another name.`,
+    `${R(c)}: I buried her properly. That's more than anyone did for me.`,
+    `${H(c)}: Properly is not the same as honestly.`,
+  ],
+  (c) => [
+    `${A(c)}: They're going to ask you where you were.`,
+    `${H(c)}: Then I'll tell them.`,
+    `${A(c)}: If you tell them, you lose the house, the job, all of it.`,
+    `${H(c)}: I came here with nothing. You keep forgetting that.`,
+  ],
+];
+
+const DEFLECTS: readonly Block[] = [
+  (c) => [
+    `${R(c)}: You think you're the first one to stand in that doorway and demand something?`,
+    `${H(c)}: No.`,
+    `${R(c)}: Good. Then you know how it usually ends.`,
+    `${H(c)}: I know how it ended for them. Not for me.`,
+  ],
+  (c) => [
+    `${R(c)}: Let me tell you what happens if you keep pulling that thread.`,
+    `ACTION: He counts it off on his fingers, unhurried.`,
+    `${R(c)}: Your mother's clinic. Your brother's scholarship. The lease on the room you send money for.`,
+    `${H(c)}: You've been busy.`,
+    `${R(c)}: I've been thorough. There's a difference.`,
+  ],
+  (c) => [
+    `${A(c)}: Whatever he told you, he told me the same thing four years ago.`,
+    `${H(c)}: And?`,
+    `${A(c)}: And I believed him. Look where I'm standing.`,
+  ],
+  (c) => [
+    `ACTION: He slides an envelope across. She doesn't touch it. She doesn't move it back either.`,
+    `${H(c)}: What is this supposed to be?`,
+    `${R(c)}: A door. You walk through it and none of this follows you.`,
+    `${H(c)}: And my father? Does he walk through it too?`,
+    `${R(c)}: ...There's only the one envelope.`,
+  ],
+  (c) => [
+    `${R(c)}: You keep saying "the truth" like it's a door.`,
+    `${H(c)}: It is.`,
+    `${R(c)}: It's a window. You can see through it, and you still can't get out.`,
+  ],
+  (c) => [
+    `${A(c)}: Don't make me choose.`,
+    `${H(c)}: I'm not making you do anything.`,
+    `${A(c)}: You are. Just by standing there.`,
+  ],
+];
+
+const TURNS: readonly Block[] = [
+  (c) => [
+    `ACTION: She puts ${c.token} on the table between them. Face up.`,
+    `${R(c)}: ...Where did you get that.`,
+    `${H(c)}: You should be asking who else has a copy.`,
+    `${R(c)}: Who else has a copy.`,
+    `${H(c)}: Now you're asking.`,
+  ],
+  (c) => [
+    `${A(c)}: I have to tell you something, and after I do you won't want to look at me.`,
+    `${H(c)}: Say it.`,
+    `${A(c)}: Who do you think told them where to find you?`,
+    `ACTION: The room does not change. Everything in it does.`,
+  ],
+  (c) => [
+    `${H(c)}: The date on it is three days before the funeral.`,
+    `${R(c)}: That's a mistake.`,
+    `${H(c)}: It's typed. It's stamped. It's signed by a man who was supposed to already be dead.`,
+    `${R(c)}: ...Give it to me.`,
+    `${H(c)}: No.`,
+  ],
+  (c) => [
+    `${R(c)}: I've known since the first night.`,
+    `${H(c)}: Since—`,
+    `${R(c)}: Since you gave me a surname that doesn't exist in that province. I was waiting to see how long you'd keep it up.`,
+  ],
+  (c) => [
+    `ACTION: The photograph is twenty years old. She is in it, and she has not been born yet.`,
+    `${H(c)}: That's not possible.`,
+    `${A(c)}: No.`,
+    `${H(c)}: Then explain it.`,
+    `${A(c)}: I can't. That's why I kept it.`,
+  ],
+  (c) => [
+    `${H(c)}: Ask him what he signed. Ask him in front of everyone.`,
+    `ACTION: Nobody speaks. Then, from the back of the room, somebody starts clapping.`,
+    `${R(c)}: ...Sit down.`,
+    `${H(c)}: I've been sitting down for six months. Ask him.`,
+  ],
+];
+
+const CLOSERS: readonly Block[] = [
+  (c) => [
+    `${R(c)}: Go to bed, ${c.hero}.`,
+    `${H(c)}: I'm not tired.`,
+    `${R(c)}: I didn't say you were.`,
+    `ACTION: She goes. She does not turn her back on him doing it.`,
+  ],
+  (c) => [
+    `${A(c)}: Whatever you do next — don't do it here.`,
+    `${H(c)}: Why?`,
+    `${A(c)}: Because this house keeps everything that happens in it.`,
+  ],
+  (c) => [
+    `ACTION: She sets ${c.token} down and leaves it where anyone can see.`,
+    `${H(c)}: I'm done carrying it.`,
+    `${R(c)}: You think that makes it lighter?`,
+    `${H(c)}: No. I think it makes it everyone's.`,
+  ],
+  (c) => [
+    `${H(c)}: Tomorrow I'm going to ask you again.`,
+    `${R(c)}: And I'll give you the same answer.`,
+    `${H(c)}: Then I'll ask the day after that.`,
+    `ACTION: He watches her go. For the first time, he looks tired.`,
+  ],
+  (c) => [
+    `${A(c)}: You're not going to let this go, are you.`,
+    `${H(c)}: Would you?`,
+    `${A(c)}: ...No. I'd have let it go years ago and hated myself every day since.`,
+  ],
+];
+
+/**
+ * Assembles one episode's scene.
+ *
+ * The beat's own lines stay the spine — they are what the arc needs to happen —
+ * and the blocks build the conversation around them. Blocks are drawn without
+ * repeats inside an episode, so nobody says the same thing twice in one scene.
+ */
+function composeScene(cast: Cast, spine: string[], random: () => number): string[] {
+  // Keyed by the pool itself. Keying by its length collided — three of the
+  // pools hold six blocks each, so a draw from one silently blocked the same
+  // index in the others and the fallback could then repeat for real.
+  const drawn = new Map<readonly Block[], Set<number>>();
+
+  // Every substantive line already in the scene, spine included. A block that
+  // would repeat one is passed over: the pools were written by hand against the
+  // arc, and a line copied into both ends up said twice in the same episode.
+  // Short replies ("No.", "And?") are exempt — a character can say those twice.
+  const said = new Set<string>();
+  const substantive = (line: string) => line.length > 24 && !line.startsWith('ACTION:');
+  const remember = (lines: string[]) => {
+    for (const line of lines) if (substantive(line)) said.add(line);
+  };
+  const echoes = (lines: string[]) => lines.some((line) => substantive(line) && said.has(line));
+
+  remember(spine);
+
+  const draw = (pool: readonly Block[]): string[] => {
+    let taken = drawn.get(pool);
+    if (!taken) {
+      taken = new Set<number>();
+      drawn.set(pool, taken);
+    }
+    // Every block used once already: start the pool over rather than stall.
+    if (taken.size >= pool.length) taken.clear();
+
+    const index = Math.floor(random() * pool.length) % pool.length;
+    for (let step = 0; step < pool.length; step += 1) {
+      const candidate = (index + step) % pool.length;
+      if (taken.has(candidate)) continue;
+      const block = pool[candidate](cast);
+      if (echoes(block)) continue;
+
+      taken.add(candidate);
+      remember(block);
+      return block;
+    }
+
+    // Nothing clean left — take the first unused one anyway rather than
+    // dropping a chunk of the episode.
+    for (let step = 0; step < pool.length; step += 1) {
+      const candidate = (index + step) % pool.length;
+      if (taken.has(candidate)) continue;
+      taken.add(candidate);
+      const block = pool[candidate](cast);
+      remember(block);
+      return block;
+    }
+
+    taken.add(index);
+    return pool[index](cast);
+  };
+
+  // Twelve blocks, not eight. Measured: eight ran about three minutes once the
+  // narrator read it, and the episode claims five. The scene has to be long
+  // enough to actually speak for that long.
+  return [
+    ...draw(OPENERS),
+    '',
+    ...draw(PRESSES),
+    '',
+    ...draw(DEFLECTS),
+    '',
+    ...spine,
+    '',
+    ...draw(PRESSES),
+    '',
+    ...draw(TURNS),
+    '',
+    ...draw(DEFLECTS),
+    '',
+    ...draw(PRESSES),
+    '',
+    ...draw(TURNS),
+    '',
+    ...draw(DEFLECTS),
+    '',
+    ...draw(PRESSES),
+    '',
+    ...draw(CLOSERS),
+  ];
+}
+
+/** Around five minutes per episode, running a little longer as stakes rise. */
 function runtime(index: number, total: number): number {
   const progress = total <= 1 ? 1 : index / (total - 1);
-  return Math.round(68 + progress * 38);
+  return Math.round(285 + progress * 40);
 }
 
 export function writeBreakdown(request: ScriptRequest): Breakdown {
@@ -573,7 +892,13 @@ export function writeBreakdown(request: ScriptRequest): Breakdown {
       scene_number: n,
       title: repeat > 0 ? `${title} (${repeat + 1})` : title,
       beat: spec.beat(cast),
-      script: [heading, '', ...spec.lines(cast), '', `HOOK — ${hook}`].join('\n'),
+      script: [
+        heading,
+        '',
+        ...composeScene(cast, spec.lines(cast), rng(seedFrom(`${premise}|${n}`))),
+        '',
+        `HOOK — ${hook}`,
+      ].join('\n'),
       hook,
       duration_seconds: runtime(index, request.episodes),
     };
